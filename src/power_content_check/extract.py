@@ -25,6 +25,7 @@ from typing import Any
 
 import pypdf
 
+from .geometry import document_cells
 from .normalize import normalize, normalize_lines
 
 #: A PDF whose text layer yields fewer than this many characters is treated as
@@ -84,6 +85,12 @@ class LabelDocument:
     ``image_count`` and ``extraction_basis`` describe how much of the document
     the tool actually saw. They are not regulatory quantities and no check
     cites them; they qualify what an absence finding is entitled to mean.
+
+    ``cells`` is the same document read column by column instead of line by
+    line, and is ``None`` whenever that reading could not be recovered. It is
+    not a second opinion about the document's contents. See
+    :mod:`power_content_check.geometry` and ADR 0008 for the single narrow
+    thing it is allowed to settle.
     """
 
     path: Path
@@ -94,6 +101,7 @@ class LabelDocument:
     normalized_lines: list[str]
     image_count: int | None
     extraction_basis: str
+    cells: tuple[str, ...] | None = None
 
 
 @dataclass(frozen=True)
@@ -166,6 +174,7 @@ def _build(
     text: str,
     image_count: int | None,
     extraction_basis: str,
+    cells: tuple[str, ...] | None = None,
 ) -> LabelDocument:
     return LabelDocument(
         path=path,
@@ -176,6 +185,7 @@ def _build(
         normalized_lines=normalize_lines(text),
         image_count=image_count,
         extraction_basis=extraction_basis,
+        cells=cells,
     )
 
 
@@ -251,7 +261,7 @@ def _extract_pdf(path: Path, data: bytes, digest: str, min_chars: int) -> Extrac
         )
     images = count_images(pages)
     basis = IMAGES_UNCOUNTABLE_BASIS if images is None else _pdf_basis(images)
-    return _build(path, digest, len(pages), text, images, basis)
+    return _build(path, digest, len(pages), text, images, basis, document_cells(pages))
 
 
 def _extract_text(path: Path, data: bytes, digest: str, min_chars: int) -> ExtractResult:

@@ -455,6 +455,27 @@ def _all_words_present(doc: LabelDocument, phrase: str) -> bool:
     )
 
 
+def _in_a_reconstructed_cell(doc: LabelDocument, renderings: list[str]) -> str | None:
+    """The first rendering that sits whole inside one reconstructed cell.
+
+    Reading a PDF column by column instead of line by line is the one use ADR
+    0007 left open for position, and this is the only place in the tool that
+    uses it. It is reached only from the branch below, which reports
+    NOT_EVALUATED, so geometry can turn "the tool cannot tell" into "the tool
+    found it" and can do nothing else. It cannot produce a deviation, because
+    the deviation is returned before it is consulted for any document whose
+    text layer lacks the words entirely.
+    """
+    from .normalize import contains_ignoring_spaces
+
+    if not doc.cells:
+        return None
+    for rendering in renderings:
+        if any(contains_ignoring_spaces(cell, rendering) for cell in doc.cells):
+            return rendering
+    return None
+
+
 def _pcl016(doc: LabelDocument, ctx: CheckContext) -> CheckResult:
     from .normalize import contains_ignoring_spaces
 
@@ -474,6 +495,17 @@ def _pcl016(doc: LabelDocument, ctx: CheckContext) -> CheckResult:
     # test, and the tool is not entitled to pick the accusing one.
     scattered = [r for r in STATEWIDE_RENDERINGS if _all_words_present(doc, r)]
     if scattered:
+        recovered = _in_a_reconstructed_cell(doc, scattered)
+        if recovered:
+            return _ok(
+                "PCL016",
+                "The label separately discloses the statewide figures.",
+                f"Matched the rendering '{recovered}' in a column read down the page "
+                "rather than across it. The words are out of order in the text layer "
+                "because the heading wraps onto a second line and extraction reads "
+                "across the wrap; the position of each word on the page puts them back "
+                "in the same cell.",
+            )
         return _unknown(
             "PCL016",
             "Not evaluated: every word of the accepted rendering "
@@ -482,7 +514,9 @@ def _pcl016(doc: LabelDocument, ctx: CheckContext) -> CheckResult:
                 doc,
                 "Extraction does not preserve the order of a column heading that wraps "
                 "onto a second line, so words belonging to the heading beside it can "
-                "arrive in the middle of this one. The tool cannot tell that apart from "
+                "arrive in the middle of this one. Reading the page column by column "
+                "did not put the rendering back together either, or this document "
+                "carries no recoverable geometry. The tool cannot tell that apart from "
                 "a heading that is absent, so it reports neither.",
             ),
         )
@@ -762,7 +796,9 @@ CHECKS: tuple[RegisteredCheck, ...] = (
         "electricity.",
         "One of the accepted renderings of the statewide column heading appears. The "
         "accepted list includes the wording used on the labels the Energy Commission "
-        "issues, because a supplier may not alter that format.",
+        "issues, because a supplier may not alter that format. Where the words are all "
+        "present but not together, the page is read column by column before the check "
+        "gives up, because a heading that wraps arrives out of order in a text layer.",
         _pcl016,
     ),
     _implemented(

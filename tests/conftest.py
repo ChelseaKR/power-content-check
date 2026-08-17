@@ -75,11 +75,26 @@ LABEL_LINES = (
 )
 
 
-def synthetic_label_pdf(path: Path, images: int = 0, nested_images: int = 0) -> Path:
+#: Extra strings to draw at chosen coordinates, as (x, y, text).
+#:
+#: A label's column headings are not prose, and where they sit is what tells one
+#: heading from the one beside it. Fixtures that need real geometry, rather than
+#: a line of text that happens to contain the right words, place their own.
+Placed = tuple[tuple[float, float, str], ...]
+
+
+def synthetic_label_pdf(
+    path: Path,
+    images: int = 0,
+    nested_images: int = 0,
+    placed: Placed = (),
+) -> Path:
     """A one page PDF carrying a readable text layer and a chosen image count."""
     drawing = ["BT /F1 11 Tf"]
     for index, line in enumerate(LABEL_LINES):
         drawing.append(f"1 0 0 1 40 {740 - index * 18} Tm ({line}) Tj")
+    for x, y, text in placed:
+        drawing.append(f"1 0 0 1 {x} {y} Tm ({text}) Tj")
     drawing.append("ET")
     for slot in range(images):
         drawing.append(f"q 10 0 0 10 {60 + slot * 20} 300 cm /Im{slot} Do Q")
@@ -133,6 +148,49 @@ def text_layer_pdf(tmp_path: Path) -> Path:
 def illustrated_pdf(tmp_path: Path) -> Path:
     """A readable PDF that also carries artwork, two of it nested in a form."""
     return synthetic_label_pdf(tmp_path / "illustrated_label.pdf", images=3, nested_images=2)
+
+
+#: A statewide column heading too long for its column, wrapped onto a second
+#: line, with the supplier's own column heading wrapped beside it. Reading the
+#: page line by line, which is what a text extractor does, yields "2024 Example
+#: CA Utility" and then "Power Mix Average", so neither heading survives as a
+#: phrase. Reading it column by column yields both. This is the shape of the
+#: artefact ADR 0006 found on published labels and ADR 0008 repairs.
+#:
+#: The second line of each heading is centred under the first, which is how the
+#: issued labels set them, so its extent sits inside the first line's. The first
+#: heading arrives in two pieces that touch, which is how the issued labels
+#: arrive too: a page draws a phrase in as many runs as it likes, and the pieces
+#: have to be put back together before there is a cell to place.
+WRAPPED_HEADING: Placed = (
+    (200, 540, "2024 "),
+    (227.7, 540, "Example"),
+    (400, 540, "CA Utility"),
+    (210, 528, "Power Mix"),
+    (402, 528, "Average"),
+)
+
+#: The words of an accepted rendering, present on the page and belonging to
+#: nothing. They sit too far apart vertically to be lines of one cell and their
+#: extents do not nest, so reading the page column by column puts them in three
+#: different cells and the check still refuses to decide.
+SCATTERED_WORDS: Placed = (
+    (40, 540, "Average Rate Table"),
+    (300, 480, "CA"),
+    (450, 420, "Utility"),
+)
+
+
+@pytest.fixture
+def wrapped_heading_pdf(tmp_path: Path) -> Path:
+    """A readable PDF whose statewide column heading wraps onto a second line."""
+    return synthetic_label_pdf(tmp_path / "wrapped_heading.pdf", placed=WRAPPED_HEADING)
+
+
+@pytest.fixture
+def scattered_words_pdf(tmp_path: Path) -> Path:
+    """A readable PDF carrying the words of a rendering but not the rendering."""
+    return synthetic_label_pdf(tmp_path / "scattered_words.pdf", placed=SCATTERED_WORDS)
 
 
 @pytest.fixture
