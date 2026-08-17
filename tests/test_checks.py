@@ -252,7 +252,7 @@ class TestTextTheExtractorBrokeApart:
 
     def test_a_wrapped_column_heading_is_not_evaluated(self, tmp_path: Path) -> None:
         """Two headings side by side, each wrapping, extract interleaved."""
-        body = "2024 SDG and E CA Utility\nPower Mix Average\nSolar 24% 23%"
+        body = "2024 Example Utility CA Utility\nPower Mix Average\nSolar 24% 23%"
         status, finding = self._run(tmp_path, "PCL016", body)
         assert status is Status.NOT_EVALUATED
         assert "not together" in finding
