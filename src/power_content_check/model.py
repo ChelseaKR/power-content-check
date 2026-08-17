@@ -247,6 +247,12 @@ class RunReport:
     generated_at: str
     documents: list[DocumentReport]
     notice: str
+    #: Files found inside a directory the caller named that are not a supported
+    #: label format, so were not checked. Named rather than dropped in silence,
+    #: because the Energy Commission publishes a second rendering of each label
+    #: beside it and a reader should be told which file was read. These are not
+    #: documents and they are not in any count.
+    skipped: list[str] = field(default_factory=list)
 
     @property
     def exit_code(self) -> int:
@@ -285,6 +291,7 @@ class RunReport:
             "ruleset_effective": self.ruleset_effective,
             "generated_at": self.generated_at,
             "notice": self.notice,
+            "skipped": list(self.skipped),
             "summary": self.summary,
             "exit_code": self.exit_code,
             "documents": [d.to_dict() for d in self.documents],

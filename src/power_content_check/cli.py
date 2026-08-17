@@ -32,7 +32,8 @@ Higher codes win, so a run that checked nothing cannot report as a run that
 found nothing.
 
 Supported inputs: {", ".join(SUPPORTED_SUFFIXES)}. A directory is expanded to
-the supported files inside it.
+the supported files inside it, and anything else in it is named at the end of
+the report rather than dropped in silence.
 """
 
 

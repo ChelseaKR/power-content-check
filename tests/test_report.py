@@ -94,6 +94,79 @@ class TestText:
         assert "Basis: the text layer of this PDF, which also embeds 5 images." in out
 
 
+class TestFilesThatWereNotRead:
+    """A folder holds more than the file this tool reads, and says so.
+
+    The Energy Commission publishes a spreadsheet beside every label, an
+    alternative rendering of the same disclosure. This tool reads the PDF and
+    the plain text and does not read that spreadsheet, for the reasons in ADR
+    0009. What it must not do is leave a reader thinking the folder held one
+    file.
+    """
+
+    def _folder(self, tmp_path: Path, conforming_label: Path) -> Path:
+        folder = tmp_path / "one_label"
+        folder.mkdir()
+        (folder / "label.txt").write_text(conforming_label.read_text(encoding="utf-8"))
+        (folder / "label.xlsx").write_bytes(b"PK\x03\x04 an alternative rendering")
+        return folder
+
+    def test_the_skipped_file_is_named(self, tmp_path: Path, conforming_label: Path) -> None:
+        out = render_text(check_paths([self._folder(tmp_path, conforming_label)]))
+        assert "label.xlsx" in out
+        assert "is not a format this tool reads" in out
+
+    def test_the_skipped_file_is_not_a_document(
+        self, tmp_path: Path, conforming_label: Path
+    ) -> None:
+        """It is named, and it is in no count. Naming it is not checking it."""
+        report = check_paths([self._folder(tmp_path, conforming_label)])
+        assert report.summary["documents_checked"] == 1
+        assert len(report.skipped) == 1
+
+    def test_json_carries_the_same_list(self, tmp_path: Path, conforming_label: Path) -> None:
+        payload = json.loads(render_json(check_paths([self._folder(tmp_path, conforming_label)])))
+        assert [Path(p).name for p in payload["skipped"]] == ["label.xlsx"]
+
+    def test_a_folder_of_nothing_readable_still_says_nothing_checked(self, tmp_path: Path) -> None:
+        """Naming what was skipped must not soften an empty denominator."""
+        folder = tmp_path / "only_workbooks"
+        folder.mkdir()
+        (folder / "one.xlsx").write_bytes(b"PK\x03\x04 first")
+        (folder / "two.xlsx").write_bytes(b"PK\x03\x04 second")
+        report = check_paths([folder])
+        out = render_text(report)
+        assert report.exit_code == ExitCode.NOTHING_CHECKED
+        assert "NOTHING CHECKED." in out
+        assert "2 files in the directories given are not a format" in _flat(out)
+
+    def test_a_file_named_on_the_command_line_is_not_skipped_quietly(
+        self, unsupported_file: Path
+    ) -> None:
+        """Naming a file is asking about it, so it stays a document and fails closed."""
+        report = check_paths([unsupported_file])
+        assert report.skipped == []
+        assert report.summary["documents_unreadable"] == 1
+
+    def test_a_long_list_is_summarised_and_never_truncated_in_the_json(
+        self, tmp_path: Path, conforming_label: Path
+    ) -> None:
+        """A folder of a hundred other files must not bury the findings."""
+        folder = tmp_path / "busy"
+        folder.mkdir()
+        (folder / "label.txt").write_text(conforming_label.read_text(encoding="utf-8"))
+        for index in range(30):
+            (folder / f"other-{index:02d}.xlsx").write_bytes(b"PK\x03\x04")
+        report = check_paths([folder])
+        out = render_text(report)
+        assert "and 20 more, all of them in the JSON output." in out
+        assert len(json.loads(render_json(report))["skipped"]) == 30
+
+    def test_nothing_is_said_when_nothing_was_skipped(self, conforming_label: Path) -> None:
+        out = render_text(check_paths([conforming_label]))
+        assert "is not a format this tool reads" not in out
+
+
 class TestCatalogRendering:
     def test_text_catalog_quotes_every_source(self) -> None:
         from power_content_check.checks import CHECKS

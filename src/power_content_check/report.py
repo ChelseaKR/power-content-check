@@ -17,6 +17,10 @@ _MARK = {
 
 _WIDTH = 88
 
+#: How many skipped file names the text report prints before summarising the
+#: rest. A display choice and nothing more: the JSON always carries every one.
+_SKIPPED_SHOWN = 10
+
 
 def _wrap(text: str, indent: str) -> str:
     return textwrap.fill(
@@ -76,6 +80,35 @@ def _render_document(document: DocumentReport, verbose: bool) -> list[str]:
     return lines
 
 
+def _render_skipped(report: RunReport) -> list[str]:
+    """Name the files that were in the folder and were not read.
+
+    A directory expands to the label formats this tool reads. Anything else in
+    it is dropped, and dropping it in silence is what this block prevents: the
+    Energy Commission publishes a second rendering of each label beside it, and
+    a reader is entitled to know which of the two the report is about. Nothing
+    here is a finding and none of it is in any count.
+    """
+    if not report.skipped:
+        return []
+    count = len(report.skipped)
+    one = count == 1
+    lines = [
+        "",
+        _wrap(
+            f"{count} {'file' if one else 'files'} in the directories given "
+            f"{'is' if one else 'are'} not a format this tool reads, so nothing above "
+            f"is a statement about {'it' if one else 'them'}:",
+            "",
+        ),
+    ]
+    lines += [f"  {path}" for path in report.skipped[:_SKIPPED_SHOWN]]
+    remainder = count - _SKIPPED_SHOWN
+    if remainder > 0:
+        lines.append(f"  and {remainder} more, all of them in the JSON output.")
+    return lines
+
+
 def render_text(report: RunReport, verbose: bool = False) -> str:
     lines: list[str] = [
         f"{report.tool} {report.tool_version}",
@@ -94,10 +127,13 @@ def render_text(report: RunReport, verbose: bool = False) -> str:
                 "  ",
             ),
         ]
+        lines += _render_skipped(report)
         return "\n".join(lines)
 
     for document in report.documents:
         lines += _render_document(document, verbose)
+
+    lines += _render_skipped(report)
 
     summary = report.summary
     lines += [

@@ -24,7 +24,13 @@ from pathlib import Path
 from . import __version__
 from .checks import CHECKS, CheckContext, RegisteredCheck
 from .citations import NOTICE, RULESET_EFFECTIVE, RULESET_ID
-from .extract import DEFAULT_MIN_TEXT_CHARS, LabelDocument, discover, extract
+from .extract import (
+    DEFAULT_MIN_TEXT_CHARS,
+    LabelDocument,
+    discover,
+    extract,
+    unsupported_in,
+)
 from .model import CheckResult, DocumentReport, Readability, RunReport, Status
 
 TOOL_NAME = "power-content-check"
@@ -146,6 +152,7 @@ def check_paths(
         generated_at=stamp,
         documents=documents,
         notice=NOTICE,
+        skipped=[str(p) for p in unsupported_in(paths)],
     )
 
 

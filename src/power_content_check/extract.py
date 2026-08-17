@@ -346,3 +346,30 @@ def discover(paths: list[Path]) -> list[Path]:
             seen.add(resolved)
             unique.append(path)
     return unique
+
+
+def unsupported_in(paths: list[Path]) -> list[Path]:
+    """Files inside the directories given that are not a supported label format.
+
+    :func:`discover` drops these, and it should: expanding a directory into
+    every file inside it would report a stylesheet as an unreadable label.
+    Dropping them without a word is the part worth fixing. The Energy
+    Commission publishes a second rendering of each label beside it, a
+    spreadsheet, and someone who points this tool at a folder holding both is
+    entitled to be told which of the two was read. The tool reads the one it
+    reads, and says so, rather than deciding on a reader's behalf that the
+    other file was not there. See ADR 0009.
+    """
+    skipped: list[Path] = []
+    seen: set[Path] = set()
+    for path in paths:
+        if not path.is_dir():
+            continue
+        for child in sorted(path.rglob("*")):
+            if not child.is_file() or child.suffix.lower() in SUPPORTED_SUFFIXES:
+                continue
+            resolved = child.resolve()
+            if resolved not in seen:
+                seen.add(resolved)
+                skipped.append(child)
+    return skipped
