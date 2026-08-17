@@ -119,8 +119,23 @@ more.
 `scripts/inspect_artwork.py` prints every image a PDF declares and the size at
 which the page draws it, so you can judge whether a missing element could
 plausibly be inside one. Where any doubt remains, render the page and look at
-it. `docs/sources.md` records that being done for the three published labels
+it. `docs/sources.md` records that being done for the eight published labels
 this project calibrated against, and what it showed.
+
+### A phrase the extractor broke apart is not a phrase the label lacks
+
+Artwork is one way a text extractor loses content. Handing it over in pieces is
+another. A subscript is a separate text run, so the CO2 in the footnote
+prescribed by section 1393.1(l)(2) extracts with a space inside the word; a
+column heading too long for its column wraps, and extraction reads across the
+wrap, so the heading beside it arrives in the middle of this one.
+
+Both produced deviations against published labels that plainly carry the
+element. Prescribed phrases are now matched with the spaces removed on both
+sides, which ignores where the extractor put its spaces without ignoring what
+sits between the words. Where other words are inside the phrase, the tool
+reports not evaluated rather than choosing between "absent" and "wrapped". See
+[docs/adr/0006](docs/adr/0006-a-phrase-the-extractor-broke-apart.md).
 
 ## Which ruleset, for which year
 
@@ -167,21 +182,26 @@ not measure should be visible, not implied by silence.
 
 Each one also says whether the gap can ever close:
 
-- **permanent**, for eight of them. No version of this tool that reads the
+- **permanent**, for nine of them. No version of this tool that reads the
   document it is handed can decide the requirement, because the fact it turns
   on is not in the document, or because deciding it would mean inventing a rule
   no published source supplies. Needing the supplier's annual resource report
   as a second input is one. Needing to know whether a portfolio was negotiated
   under private agreement is another. So is adding up a column of whole
   percentages that were rounded, against a total the label displays, with no
-  rounding rule or tolerance in the published text to compare against.
+  rounding rule or tolerance in the published text to compare against. So is
+  saying which of two contact details belongs to whom, on a document that does
+  not say.
 
-- **conditional**, for four of them, where the reason names what would unblock
-  it: a capability this tool has chosen not to build, or a document that does
-  not exist yet.
+- **conditional**, for three of them, where the reason names what would unblock
+  it: a document that does not exist yet.
 
 Run `uv run power-content-check catalog` for the full list with reasons, and
 see [docs/adr/0005](docs/adr/0005-say-whether-a-gap-can-ever-close.md).
+PCL021 moved from conditional to permanent once the capability it named,
+reading where on the page each string sits, was assessed and found to answer a
+different question than the one it is blocked on. See
+[docs/adr/0007](docs/adr/0007-position-does-not-decide-ownership.md).
 
 Neither count measures coverage, and finding two more gaps did not close any.
 The number of implemented checks is the one that moves when the tool gets
@@ -195,7 +215,9 @@ supplier's figures.
 
 `scripts/fetch_examples.py` will fetch a small number of published labels into
 a local, ignored cache if you want to exercise the tool against real documents.
-It honours robots.txt, rate limits itself, and refuses to fetch in bulk.
+It honours robots.txt, rate limits itself, and refuses to fetch in bulk. Eight
+published labels have been read this way, and two of the checks are the way
+they are because of what the eighth showed that the third did not.
 
 `scripts/inspect_artwork.py` reports the artwork on a PDF page. Neither script
 is part of the package and neither is invoked by the CLI, which is offline.

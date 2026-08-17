@@ -55,9 +55,42 @@ recorded as one.
   than the date it was disclosed.
 - PCL021 and PCL027 reasons extended to say what would, and would not, unblock
   them.
+- The calibration set went from three published 2024 labels to eight, chosen to
+  be unlike each other: three investor owned utilities, two large municipal
+  utilities, a community choice aggregator, an electric service provider and a
+  rural cooperative. The two deviations the first three reported hold on all
+  eight. The column arithmetic result holds too, at fourteen of thirty three
+  columns rather than eight of fourteen, with the statewide column one off its
+  displayed total on every label read.
+- Prescribed phrases are matched with the spaces removed on both sides, through
+  `normalize.contains_ignoring_spaces`. A subscript is a separate text run, so
+  the CO2 in the footnote prescribed by section 1393.1(l)(2) extracted with a
+  space inside the word and PCL014 reported a footnote absent from a label that
+  carries it verbatim. Intervening words are still not ignored.
+- PCL016 reports not evaluated, rather than a deviation, when every word of an
+  accepted rendering appears but the rendering does not. A column heading that
+  wraps extracts with the words of the heading beside it inside it, and that is
+  indistinguishable from an absent heading by substring match. It reported a
+  missing statewide disclosure on two labels that carry one.
+- PCL021 is reclassified from conditional to permanent. Positional extraction,
+  the capability its reason named, answers where a string sits and not who it
+  belongs to, and turning nearness into ownership is a threshold no published
+  source supplies. The permanent set pinned in `tests/test_registry.py` goes
+  from eight identifiers to nine and conditional from four to three. See
+  `docs/adr/0007`.
+- PCL019, PCL020, PCL022 and PCL029 reasons sharpened after rereading the
+  regulation text and the wider label set. None changed class.
 
 ### Documented
 
+- `docs/adr/0006`, what a wider calibration set showed, and how the tool now
+  handles a prescribed phrase that extraction broke apart.
+- `docs/adr/0007`, why position does not decide who a contact detail belongs
+  to, and the reread of the other permanent classifications that went with it.
+- `docs/sources.md` lists all eight calibration labels, records that the Energy
+  Commission publishes an alternative rendering of each label beside it which
+  does name the Energy Commission in full, and records that no label read
+  carries any statement of the section 1393.1(c)(6) requirement.
 - `docs/adr/0003`, how the artwork question was resolved for the three
   calibration labels and what the tool now says in general.
 - `docs/adr/0004`, why one ruleset is the right one for a data year 2024 label
