@@ -1,0 +1,46 @@
+2025 POWER CONTENT LABEL
+Example Municipal Utility District
+
+                                          Standard Plan   Green Plan   CA Utility Average
+Greenhouse Gas Emissions Intensity
+(lbs of CO2e emitted per megawatt hour)             410            0                  359
+
+Electricity Sources
+Renewables and Zero-Carbon Resources
+Fossil Fuels and Unspecified Power
+RPS Eligible Renewables                              32%         100%                 45%
+   Biomass & Biogas                                   2%           0%                  2%
+   Geothermal                                         5%           0%                  5%
+   Eligible Hydroelectric                             1%           0%                  2%
+   Solar                                             14%         100%                 23%
+   Wind                                              10%           0%                 14%
+Large Hydroelectric                                   8%           0%                 10%
+Nuclear                                               6%           0%                 11%
+Emerging Technologies                                 0%           0%                  0%
+Other                                                 0%           0%                  0%
+Natural Gas                                          21%           0%                 10%
+Coal & Petroleum                                      1%           0%                  2%
+Unspecified Power (primarily fossil fuels)           31%           0%                 22%
+Total                                               100%         100%                100%
+Retail sales covered by retired unbundled RECs        4%           0%
+
+This label does not reflect compliance with the Renewables Portfolio Standard (RPS), which
+measures the use of tracking instruments called Renewable Energy Credits (RECs) over the
+course of multi-year compliance periods. RECs that are purchased separately from the
+renewable energy ("Unbundled RECs") can be used for RPS compliance, but they do not factor
+into the power mixes or GHG emissions intensities above.
+
+GHG intensity figures exclude biogenic CO2 and emissions from geothermal sources and
+grandfathered imports of firmed-and-shaped energy. For detailed information about all GHG
+emissions from California's retail electricity suppliers, visit the CEC webpage at the
+link below.
+
+Unspecified power is electricity purchased from a genericized pool on the open market.
+
+Example Municipal Utility District
+www.example-utility.example.com
+(555) 555-0100
+
+California Energy Commission
+https://www.energy.ca.gov/programs-and-topics/programs/power-source-disclosure-program
+(916) 555-0199

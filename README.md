@@ -1,0 +1,174 @@
+# power-content-check
+
+A deterministic conformance checker for California Power Content Labels.
+
+California's Power Source Disclosure program requires every retail electricity
+supplier to disclose, once a year, the fuel mix and greenhouse gas emissions
+intensity of each electricity portfolio it sells. The disclosure goes on a
+Power Content Label, and the label's contents are prescribed in regulation.
+This tool reads one of those labels and reports which prescribed elements it
+can find, which it cannot, and which it is unable to judge.
+
+## What this tool does not do
+
+It checks conformance to a published format. **It makes no judgment about a
+supplier's power mix, its performance, or its compliance status.** It does not
+rank suppliers, it produces no leaderboard, and it says nothing about whether
+any energy source is good or bad. Structural conformance only.
+
+**This project is not affiliated with, endorsed by, or approved by the
+California Energy Commission or any utility.**
+
+Under the regulation, the Energy Commission generates the label on a supplier's
+behalf, or supplies a template, and the supplier may not alter the format. A
+deviation this tool reports is therefore a property of a document. It is not
+evidence of anything a named supplier did, and it is not a compliance
+determination, which only the Energy Commission can make.
+
+## Install
+
+Requires Python 3.12 or newer and [uv](https://docs.astral.sh/uv/).
+
+```bash
+git clone https://github.com/ChelseaKR/power-content-check
+cd power-content-check
+uv sync --locked
+```
+
+## Usage
+
+```bash
+# check one label
+uv run power-content-check check path/to/label.pdf
+
+# name the supplier so the company-name check can run
+uv run power-content-check check label.pdf --supplier-name "Example Utility"
+
+# machine readable
+uv run power-content-check check label.pdf --json
+
+# every registered check, with the requirement each one cites
+uv run power-content-check catalog
+```
+
+Accepts `.pdf` and `.txt`. A directory is expanded to the supported files
+inside it.
+
+The tool is offline. It opens the files you name and nothing else. No network
+call, no telemetry, no account, no configuration file, no cache.
+
+### Exit codes
+
+| Code | Meaning |
+| --- | --- |
+| 0 | every document was readable and every implemented check conformed |
+| 1 | at least one check found a deviation from the prescribed format |
+| 2 | at least one check could not be evaluated, including any document that could not be read |
+| 3 | nothing was checked |
+| 64 | usage error |
+
+Higher codes win. A run that both checked nothing and found a deviation reports
+the louder of the two, never the quieter.
+
+Note that exit code 2 is the ordinary result for a well formed label, because
+ten registered checks enforce nothing and always report as not evaluated. That
+is deliberate. See below.
+
+## Two rules this tool is built around
+
+### A document it could not read is never reported as conforming
+
+A scanned label, an encrypted PDF, a corrupt file, a file with no text layer:
+each of these yields an empty string from a text extractor, and an empty string
+looks exactly like a document with nothing wrong. The tool refuses that
+collision. An unreadable document produces a not-evaluated result for every
+registered check, and the run cannot exit 0.
+
+`tests/test_fail_closed.py` proves it by hashing the tool's conclusions for an
+unreadable input and for a clean one and asserting the hashes differ. The hash
+excludes file paths, timestamps and the tool version, so it compares what the
+tool concluded rather than what it was handed.
+
+### Checking zero labels is not success
+
+Point the tool at an empty directory and it exits 3 and prints `NOTHING
+CHECKED`. An empty denominator is never a pass.
+
+## Grounding
+
+Every check cites the published requirement it enforces, and the citation
+travels with the check into the JSON output and the `catalog` command. Nothing
+here is written from memory. The sources are listed in
+[docs/sources.md](docs/sources.md), each with the URL it was fetched from and
+the date it was read.
+
+Each check declares a basis:
+
+- **regulation text**: the regulation enumerates the element in words.
+- **template format**: the element is part of the label format the Energy
+  Commission itself issues. Two checks are on this basis and both say so.
+
+### 18 checks are implemented
+
+Contact details, the twelve fuel type categories, the two resource groups and
+the RPS-eligible subcategory, the emissions intensity units, retired unbundled
+RECs, the unspecified power annotation, the three prescribed footnotes, the
+separate statewide disclosure, the data year, and the displayed column totals.
+
+### 10 checks are registered and enforce nothing
+
+They appear in every report as not evaluated, with a written reason. They are
+in the catalog rather than absent from it because a requirement this tool does
+not measure should be visible, not implied by silence.
+
+They fall into four groups: requirements that need a second document the tool
+does not have; requirements whose trigger condition is a fact about a supplier's
+business rather than about the document; requirements that turn on a date whose
+applicability the published text does not settle; and one arithmetic check that
+was deliberately left unimplemented because a mis-parsed column would produce a
+false finding against a named supplier.
+
+Run `uv run power-content-check catalog` for the full list with reasons.
+
+## Examples
+
+No published label is committed to this repository. The test fixtures are
+synthetic: they imitate the shape of the issued format and carry no real
+supplier's figures.
+
+`scripts/fetch_examples.py` will fetch a small number of published labels into
+a local, ignored cache if you want to exercise the tool against real documents.
+It honours robots.txt, rate limits itself, and refuses to fetch in bulk.
+
+## Development
+
+```bash
+make verify
+```
+
+That runs lint, formatting, strict type checking, the test suite against its
+coverage floor, and the security scanners. It is the gate.
+
+## Standards Conformance
+
+| Standard | State |
+| --- | --- |
+| Responsible-Tech Framework | Applies |
+| Code Quality | Applies |
+| Security & Supply-Chain | Applies |
+| CI/CD | Applies |
+| Release & Versioning | Applies |
+| Observability | Applies |
+| Performance | Applies |
+| Accessibility | N/A (no human-facing rendered surface; output is a terminal stream and JSON) |
+| Internationalization | N/A (English-only operator output over an English-only source document) |
+| AI Evaluation | N/A (deterministic text matching; no model is called, ever) |
+| Documentation | Applies |
+| Quality & Metrics | Applies |
+| AI Development Measurement | Applies |
+| Incident Response | Applies |
+| Data Governance | Applies |
+
+## License
+
+Apache-2.0. See [LICENSE](LICENSE).

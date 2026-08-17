@@ -1,0 +1,26 @@
+POWER CONTENT LABEL
+Example Retail Energy Company
+
+                                          Standard Plan   Green Plan
+Greenhouse Gas Emissions Intensity                  410            0
+
+Electricity Sources
+Renewables and Zero-Carbon Resources
+Fossil Fuels
+RPS Eligible Renewables                              32%         100%
+   Biomass & Biogas                                   2%           0%
+   Eligible Hydroelectric                             1%           0%
+   Solar                                             14%         100%
+   Wind                                              10%           0%
+Large Hydroelectric                                   8%           0%
+Nuclear                                               6%           0%
+Natural Gas                                          21%           0%
+Coal & Petroleum                                      1%           0%
+Unspecified Power                                    31%           0%
+Total                                                97%         100%
+
+For more information about this label and about our rates and services, please see our
+customer information pages. This document describes the sources of the electricity that
+was sold to customers during the reporting year covered by this disclosure.
+
+www.example-retail.example.com

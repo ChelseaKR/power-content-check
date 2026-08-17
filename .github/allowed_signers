@@ -1,0 +1,10 @@
+# SSH allowed signers, consumed by `git verify-tag` in the release workflow.
+#
+# One line per signing identity, in the form:
+#   <principal> <key-type> <public-key>
+# for example:
+#   chelsea@example.invalid ssh-ed25519 AAAAC3Nz...
+#
+# Public keys only. Nothing secret belongs in this file.
+# The release workflow fails closed while this file lists no principal, which
+# is the intended state until a signing key is recorded here.

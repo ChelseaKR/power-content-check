@@ -1,0 +1,90 @@
+name: Release
+
+# Two jobs with different authority.
+#
+# The first job can read but not write. It checks out trusted main, confirms
+# the requested ref really is an annotated, signed tag object, and confirms
+# that tag points at a commit already on main.
+#
+# The second job can write but never checks out a working tree, so nothing in
+# the repository at the tagged ref can influence what it does. It re-resolves
+# the tag through the API before publishing, so a tag moved between the two
+# jobs does not slip through.
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Signed tag to publish, for example v0.1.0"
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  verify-tag:
+    name: Verify the signed tag against trusted main
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Check out trusted main
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: main
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Refuse to run from anywhere but main
+        run: |
+          echo "dispatched from ${GITHUB_REF}"
+          test "${GITHUB_REF}" = "refs/heads/main"
+
+      - name: Confirm the ref is an annotated tag object
+        env:
+          TAG: ${{ inputs.tag }}
+        run: |
+          git fetch --force origin "refs/tags/${TAG}:refs/tags/${TAG}"
+          test "$(git cat-file -t "${TAG}")" = "tag"
+
+      - name: Verify the tag signature
+        env:
+          TAG: ${{ inputs.tag }}
+        run: |
+          git config gpg.format ssh
+          git config gpg.ssh.allowedSignersFile .github/allowed_signers
+          git verify-tag "${TAG}"
+
+      - name: Confirm the tag is an ancestor of main
+        env:
+          TAG: ${{ inputs.tag }}
+        run: |
+          git merge-base --is-ancestor "${TAG}^{commit}" origin/main
+
+  publish:
+    name: Publish the release
+    needs: verify-tag
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Re-resolve the tag object through the API
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ inputs.tag }}
+        run: |
+          sha="$(gh api "repos/${GITHUB_REPOSITORY}/git/ref/tags/${TAG}" --jq '.object.sha')"
+          test -n "${sha}"
+          echo "TAG_SHA=${sha}" >> "${GITHUB_ENV}"
+
+      - name: Create the release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ inputs.tag }}
+        run: |
+          gh release create "${TAG}" \
+            --repo "${GITHUB_REPOSITORY}" \
+            --target "${TAG_SHA}" \
+            --title "${TAG}" \
+            --notes "See CHANGELOG.md for the entry covering ${TAG}."

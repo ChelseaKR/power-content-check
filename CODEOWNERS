@@ -1,0 +1,14 @@
+# Every path in this repository is owned by the maintainer.
+#
+# The check catalog and the citations it rests on are the parts where a wrong
+# change is hardest to notice, so they are called out explicitly rather than
+# being left to the catch-all.
+
+*                                       @ChelseaKR
+
+/src/power_content_check/checks.py      @ChelseaKR
+/src/power_content_check/citations.py   @ChelseaKR
+/src/power_content_check/extract.py     @ChelseaKR
+/docs/sources.md                        @ChelseaKR
+/tests/test_registry.py                 @ChelseaKR
+/tests/test_fail_closed.py              @ChelseaKR

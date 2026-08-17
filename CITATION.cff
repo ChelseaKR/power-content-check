@@ -1,0 +1,21 @@
+cff-version: 1.2.0
+message: "If you reference this software, please cite it as below."
+title: "power-content-check"
+abstract: >-
+  A deterministic conformance checker for California Power Content Labels.
+  It checks a published label against the prescribed label format and makes
+  no judgment about a supplier's power mix, performance, or compliance status.
+type: software
+authors:
+  - family-names: "Kelly-Reif"
+    given-names: "Chelsea"
+repository-code: "https://github.com/ChelseaKR/power-content-check"
+license: Apache-2.0
+version: 0.1.0
+date-released: "2026-08-17"
+keywords:
+  - california
+  - power source disclosure
+  - power content label
+  - conformance
+  - civic technology

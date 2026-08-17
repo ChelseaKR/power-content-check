@@ -1,0 +1,25 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+build/
+dist/
+.venv/
+
+# tooling caches
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.coverage
+.coverage.*
+htmlcov/
+coverage.xml
+.audit-requirements.txt
+
+# locally cached published labels, never committed
+examples/cache/
+
+# editors and OS
+.DS_Store
+.idea/
+.vscode/
