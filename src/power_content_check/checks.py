@@ -417,9 +417,9 @@ def _pcl012(doc: LabelDocument, ctx: CheckContext) -> CheckResult:
 
 def _footnote_check(check_id: str, lead: str, ordinal: str) -> CheckFn:
     def run(doc: LabelDocument, ctx: CheckContext) -> CheckResult:
-        from .normalize import normalize
+        from .normalize import contains_ignoring_spaces
 
-        if normalize(lead) in doc.normalized:
+        if contains_ignoring_spaces(doc.normalized, lead):
             return _ok(check_id, f"The footnote required by section 1393.1(l)({ordinal}) appears.")
         return _bad(
             doc,
@@ -427,7 +427,9 @@ def _footnote_check(check_id: str, lead: str, ordinal: str) -> CheckFn:
             f"The footnote required by section 1393.1(l)({ordinal}) does not appear in "
             "the extracted text.",
             f"The check matches the opening clause of the prescribed text: '{lead}'. "
-            "It does not compare the whole footnote word for word.",
+            "It does not compare the whole footnote word for word, and it ignores "
+            "where the extractor put its spaces, so a subscript or any other split "
+            "text run is not read as missing words.",
         )
 
     return run
@@ -446,14 +448,45 @@ _pcl014 = _footnote_check("PCL014", _FOOTNOTE_2_LEAD, "2")
 _pcl015 = _footnote_check("PCL015", _FOOTNOTE_3_LEAD, "3")
 
 
+def _all_words_present(doc: LabelDocument, phrase: str) -> bool:
+    """True when every word of ``phrase`` appears somewhere, in any order."""
+    return all(
+        re.search(rf"\b{re.escape(word)}\b", doc.normalized) is not None for word in phrase.split()
+    )
+
+
 def _pcl016(doc: LabelDocument, ctx: CheckContext) -> CheckResult:
+    from .normalize import contains_ignoring_spaces
+
     for rendering in STATEWIDE_RENDERINGS:
-        if rendering in doc.normalized:
+        if contains_ignoring_spaces(doc.normalized, rendering):
             return _ok(
                 "PCL016",
                 "The label separately discloses the statewide figures.",
                 f"Matched the rendering '{rendering}'.",
             )
+
+    # A column heading is not prose. On the labels the Energy Commission
+    # issues, a heading too long for its column wraps onto a second line, and
+    # extraction reads across the wrap, so the words of one heading arrive with
+    # the words of its neighbour inside them. A document that carries the
+    # heading and a document that lacks it then look the same to a substring
+    # test, and the tool is not entitled to pick the accusing one.
+    scattered = [r for r in STATEWIDE_RENDERINGS if _all_words_present(doc, r)]
+    if scattered:
+        return _unknown(
+            "PCL016",
+            "Not evaluated: every word of the accepted rendering "
+            f"'{scattered[0]}' appears, but not together.",
+            _with_basis(
+                doc,
+                "Extraction does not preserve the order of a column heading that wraps "
+                "onto a second line, so words belonging to the heading beside it can "
+                "arrive in the middle of this one. The tool cannot tell that apart from "
+                "a heading that is absent, so it reports neither.",
+            ),
+        )
+
     return _bad(
         doc,
         "PCL016",
@@ -776,10 +809,13 @@ CHECKS: tuple[RegisteredCheck, ...] = (
         "place without other intervening material.",
         "Subdivision (h) governs where the label sits inside the promotional materials "
         "it is published in, and subdivisions (h)(1) and (h)(2) turn on how many pages "
-        "those materials run to. A file holding the label alone cannot exhibit the "
-        "deviation, and this tool is handed a file rather than a publication, so it "
-        "cannot tell which of the two it has. Deciding what counts as intervening "
-        "material is a second, separate judgment about visual layout.",
+        "those materials run to and on which page a customer meets the label first. A "
+        "file holding the label alone cannot exhibit the deviation, and this tool is "
+        "handed a file rather than a publication, so it cannot tell which of the two it "
+        "has. Deciding what counts as intervening material is a second, separate "
+        "judgment about visual layout. The published text nowhere equates 'one place' "
+        "with one page, so a tool that reported a label spread over two pages of a file "
+        "would be enforcing an equivalence it wrote itself.",
         Blocker.PERMANENT,
     ),
     _registered_only(
@@ -792,7 +828,12 @@ CHECKS: tuple[RegisteredCheck, ...] = (
         "than one electricity portfolio.",
         "Whether any customer is served by a mixture of portfolios is a fact about the "
         "supplier's service, not about the document. The tool cannot establish whether "
-        "the requirement was triggered, so it will not report either way.",
+        "the requirement was triggered, so it will not report either way. Presence is "
+        "visible and absence is not: one of the eight published 2024 labels this "
+        "project read carries the footnote in the words subdivision (f) describes. A "
+        "check built on that asymmetry could only ever confirm, never find a deviation, "
+        "and would add to the implemented count without adding any ability to find "
+        "anything, so it was considered and refused.",
         Blocker.PERMANENT,
     ),
     _registered_only(
@@ -802,11 +843,18 @@ CHECKS: tuple[RegisteredCheck, ...] = (
         "The retail supplier's company name, phone number, and website address, and "
         "the name, phone number, and website address of the Energy Commission.",
         "PCL002, PCL003 and PCL005 count contact details but cannot say which belongs "
-        "to the supplier and which to the Energy Commission. Attribution depends on "
-        "layout adjacency, which the plain text extraction this tool uses does not "
-        "preserve. Reading where on the page each string sits would settle it. That is "
-        "a capability this tool has not built, not a fact missing from the document.",
-        Blocker.CONDITIONAL,
+        "to the supplier and which to the Energy Commission. Positional extraction was "
+        "assessed as the way to settle that and does not settle it. Coordinates give "
+        "where a string sits; ownership is a different fact, and turning nearness into "
+        "ownership means choosing a distance, which is a threshold no published source "
+        "supplies. On the eight published 2024 labels this project read there is no "
+        "telephone number at all, so there is nothing to attribute, and each label "
+        "carries exactly two web addresses whose owner follows from the domain, which "
+        "PCL003 and PCL005 already decide without reading a single coordinate. Where a "
+        "label sets a contact detail down with no owner beside it, the fact is missing "
+        "from the document rather than from the tool, and a proximity rule that guessed "
+        "wrong would attribute a contact detail to a named supplier.",
+        Blocker.PERMANENT,
     ),
     _registered_only(
         "PCL022",
@@ -817,7 +865,10 @@ CHECKS: tuple[RegisteredCheck, ...] = (
         "report for each electricity portfolio and for total power content.",
         "Requires the supplier's annual resource report as a second input. This tool "
         "reads one document at a time and does not fetch anything, and the report is "
-        "not published alongside the label.",
+        "not published alongside the label. The Energy Commission does publish a second "
+        "file beside each label on the same page; four were read and each is an "
+        "alternative rendering of the same label, not the report the consistency is "
+        "measured against.",
         Blocker.PERMANENT,
     ),
     _registered_only(
@@ -858,9 +909,9 @@ CHECKS: tuple[RegisteredCheck, ...] = (
         "load for total power content.",
         "The label displays whole percentages and the published text prescribes no "
         "rounding rule and no tolerance, so a column's components need not add to the "
-        "total the label displays. On the three published 2024 labels this project "
-        "read, eight of the fourteen columns had components summing to 99 or 101 "
-        "against a displayed total of 100, including, on all three, the statewide "
+        "total the label displays. On the eight published 2024 labels this project "
+        "read, fourteen of the thirty three columns had components summing to 99 or 101 "
+        "against a displayed total of 100, including, on all eight, the statewide "
         "column the Energy Commission itself supplies under section 1393.1(a)(3). An "
         "equality test would report a deviation for correctly rounded arithmetic, and "
         "any tolerance that suppressed it would be a threshold this tool invented "
@@ -918,7 +969,10 @@ CHECKS: tuple[RegisteredCheck, ...] = (
         "which PCL013 to PCL015 match against. Any phrase matched here would be a rule "
         "this tool wrote, and a supplier who said the same thing differently would draw "
         "a false finding. It becomes checkable on the issued-format basis if the "
-        "Energy Commission's own template carries a fixed rendering of the statement.",
+        "Energy Commission's own template carries a fixed rendering of the statement. "
+        "Eight published 2024 labels, and four of the alternative renderings published "
+        "beside them, were read for one. None carries any statement of it, so the "
+        "template that would unblock this does not exist in the 2024 vintage.",
         Blocker.CONDITIONAL,
     ),
     _registered_only(

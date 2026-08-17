@@ -64,3 +64,28 @@ def normalize_lines(text: str) -> list[str]:
 def contains(haystack_normalized: str, needle: str) -> bool:
     """Substring test where the needle is normalised the same way."""
     return normalize(needle) in haystack_normalized
+
+
+def _squeezed(normalized: str) -> str:
+    return normalized.replace(" ", "")
+
+
+def contains_ignoring_spaces(haystack_normalized: str, needle: str) -> bool:
+    """Substring test that ignores where the extractor put its spaces.
+
+    A PDF can draw one word as more than one text run. A subscript does it:
+    the issued labels set the 2 of CO2 as a subscript, and the extractor
+    reports "CO", a break, then "2". Normalisation turns that break into a
+    space, so the prescribed footnote text of section 1393.1(l)(2) stops
+    matching a document that carries it verbatim.
+
+    That space is a fact about how the page was drawn, not about the words the
+    document contains, and a deviation reported from it would be a fact about
+    this tool wearing the clothes of a fact about someone's label. Comparing
+    with the spaces removed on both sides keeps it from becoming one.
+
+    Like everything else in this module, the effect is one directional: it
+    widens what counts as a match. Two words that run together in the source
+    will also match, which is not a distinction any check here needs to draw.
+    """
+    return _squeezed(normalize(needle)) in _squeezed(haystack_normalized)

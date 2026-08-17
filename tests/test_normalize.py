@@ -2,7 +2,12 @@
 
 from __future__ import annotations
 
-from power_content_check.normalize import contains, normalize, normalize_lines
+from power_content_check.normalize import (
+    contains,
+    contains_ignoring_spaces,
+    normalize,
+    normalize_lines,
+)
 
 
 class TestNormalize:
@@ -48,3 +53,20 @@ class TestContains:
 
     def test_absent_needle(self) -> None:
         assert not contains(normalize("Solar 14%"), "Geothermal")
+
+
+class TestContainsIgnoringSpaces:
+    """A subscript, a ligature or a kerned pair splits one word into two runs."""
+
+    def test_a_split_word_still_matches(self) -> None:
+        extracted = normalize("figures exclude biogenic CO\n2 and emissions")
+        assert contains_ignoring_spaces(extracted, "biogenic CO2 and emissions")
+
+    def test_a_word_that_is_genuinely_missing_does_not_match(self) -> None:
+        extracted = normalize("figures exclude emissions")
+        assert not contains_ignoring_spaces(extracted, "biogenic CO2 and emissions")
+
+    def test_intervening_words_are_not_ignored(self) -> None:
+        """It ignores where the spaces are, not what sits between the words."""
+        extracted = normalize("CA Utility Power Mix Average")
+        assert not contains_ignoring_spaces(extracted, "CA Utility Average")

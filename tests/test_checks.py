@@ -215,6 +215,57 @@ class TestNarrowMatching:
         assert how == "figure"
 
 
+class TestTextTheExtractorBrokeApart:
+    """A phrase split by the way a page was drawn is not a phrase the label lacks.
+
+    Both cases here were found by running the tool over published labels. Both
+    produced a deviation against a named supplier for something the document
+    plainly carries, which is the failure this project exists to avoid.
+    """
+
+    def _run(self, tmp_path: Path, check_id: str, body: str) -> tuple[Status, str]:
+        from power_content_check.checks import BY_ID
+
+        path = tmp_path / "synthetic.txt"
+        path.write_text(body + "\n" + ("filler line for length. " * 20))
+        document = extract(path)
+        assert isinstance(document, LabelDocument)
+        run = BY_ID[check_id].run
+        assert run is not None
+        result = run(document, CheckContext())
+        return result.status, result.finding
+
+    def test_a_subscript_does_not_hide_the_ghg_footnote(self, tmp_path: Path) -> None:
+        """The issued labels set the 2 of CO2 as a subscript, which extracts split."""
+        body = (
+            "GHG intensity figures exclude biogenic CO\n"
+            "2 and emissions from geothermal sources and grandfathered imports of "
+            "firmed-and-shaped energy."
+        )
+        status, _ = self._run(tmp_path, "PCL014", body)
+        assert status is Status.CONFORMS
+
+    def test_a_footnote_that_is_really_absent_is_still_reported(self, tmp_path: Path) -> None:
+        status, finding = self._run(tmp_path, "PCL014", "Solar 14% Wind 10%")
+        assert status is Status.DOES_NOT_CONFORM
+        assert "extracted text" in finding
+
+    def test_a_wrapped_column_heading_is_not_evaluated(self, tmp_path: Path) -> None:
+        """Two headings side by side, each wrapping, extract interleaved."""
+        body = "2024 SDG and E CA Utility\nPower Mix Average\nSolar 24% 23%"
+        status, finding = self._run(tmp_path, "PCL016", body)
+        assert status is Status.NOT_EVALUATED
+        assert "not together" in finding
+
+    def test_a_heading_that_is_really_absent_is_still_reported(self, tmp_path: Path) -> None:
+        status, _ = self._run(tmp_path, "PCL016", "Standard Plan 32% Green Plan 100%")
+        assert status is Status.DOES_NOT_CONFORM
+
+    def test_an_intact_heading_still_conforms(self, tmp_path: Path) -> None:
+        status, _ = self._run(tmp_path, "PCL016", "Standard Rate CA Utility Average")
+        assert status is Status.CONFORMS
+
+
 class TestUnspecifiedPowerAnnotation:
     def _run(self, tmp_path: Path, body: str) -> tuple[Status, str]:
         from power_content_check.checks import BY_ID
