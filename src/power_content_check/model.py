@@ -43,6 +43,30 @@ class Basis(StrEnum):
     TEMPLATE_FORMAT = "template_format"
 
 
+class Blocker(StrEnum):
+    """Why a registered check enforces nothing, and whether that can change.
+
+    Registering a requirement the tool does not measure keeps the gap visible.
+    It also invites the same question to be reopened every time someone reads
+    the catalog. This enum answers the question once.
+
+    PERMANENT
+        No version of this tool that reads the document it is handed can decide
+        the requirement, because the fact it turns on is not in the document,
+        or because deciding it would mean inventing a rule the published
+        sources do not supply. Reopening it needs a different tool or a changed
+        regulation, not more effort here.
+
+    CONDITIONAL
+        Blocked on something nameable that could change: a capability this tool
+        has chosen not to build, or a document that does not exist yet. The
+        reason says what would unblock it.
+    """
+
+    PERMANENT = "permanent"
+    CONDITIONAL = "conditional"
+
+
 class Readability(StrEnum):
     READABLE = "readable"
     UNREADABLE = "unreadable"
@@ -102,12 +126,17 @@ class CheckSpec:
     implemented: bool
     what_it_looks_for: str
     unimplemented_reason: str | None = None
+    blocker: Blocker | None = None
 
     def __post_init__(self) -> None:
         if self.implemented and self.unimplemented_reason is not None:
             raise ValueError(f"{self.id}: implemented check carries an unimplemented reason")
+        if self.implemented and self.blocker is not None:
+            raise ValueError(f"{self.id}: implemented check carries a blocker")
         if not self.implemented and not self.unimplemented_reason:
             raise ValueError(f"{self.id}: unimplemented check must say why")
+        if not self.implemented and self.blocker is None:
+            raise ValueError(f"{self.id}: unimplemented check must say whether that is permanent")
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -117,6 +146,7 @@ class CheckSpec:
             "implemented": self.implemented,
             "what_it_looks_for": self.what_it_looks_for,
             "unimplemented_reason": self.unimplemented_reason,
+            "blocker": self.blocker.value if self.blocker else None,
             "citation": self.citation.to_dict(),
         }
 
@@ -149,6 +179,13 @@ class DocumentReport:
     sha256: str | None
     page_count: int | None
     results: list[CheckResult] = field(default_factory=list)
+    #: Raster images the document declares, or None when that is unknown or the
+    #: input is plain text. Not a regulatory quantity; it qualifies what an
+    #: absence finding is entitled to mean.
+    image_count: int | None = None
+    #: The sentence describing what the tool was able to look at. Reproduced on
+    #: the report and appended to every deviation.
+    extraction_basis: str | None = None
 
     @property
     def counts(self) -> dict[str, int]:
@@ -172,6 +209,8 @@ class DocumentReport:
             "unreadable_reason": self.unreadable_reason,
             "sha256": self.sha256,
             "page_count": self.page_count,
+            "image_count": self.image_count,
+            "extraction_basis": self.extraction_basis,
             "counts": self.counts,
             "results": [r.to_dict() for r in self.results],
         }

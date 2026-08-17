@@ -71,8 +71,8 @@ Higher codes win. A run that both checked nothing and found a deviation reports
 the louder of the two, never the quieter.
 
 Note that exit code 2 is the ordinary result for a well formed label, because
-ten registered checks enforce nothing and always report as not evaluated. That
-is deliberate. See below.
+twelve registered checks enforce nothing and always report as not evaluated.
+That is deliberate. See below.
 
 ## Two rules this tool is built around
 
@@ -93,6 +93,50 @@ tool concluded rather than what it was handed.
 
 Point the tool at an empty directory and it exits 3 and prints `NOTHING
 CHECKED`. An empty denominator is never a pass.
+
+## What the tool can see, and what it says about it
+
+Extraction reads a PDF's text layer. A label can also carry content as artwork,
+and artwork is invisible to a text extractor. So every deviation this tool
+reports is the absence of something from extracted text, which is a smaller
+claim than absence from the document, and the tool is worded to make the
+smaller claim.
+
+Each report opens with what the tool was able to look at, and the same sentence
+is appended to every deviation, so a finding quoted on its own still carries
+it:
+
+```
+Basis: the text layer of this PDF, which also embeds 7 images. Text that is
+drawn inside a picture is not read.
+```
+
+For a PDF with no images at all, the sentence says so, which is a stronger
+position to report an absence from. It still notes that text drawn as vector
+paths would not be read either, because the count measures images and nothing
+more.
+
+`scripts/inspect_artwork.py` prints every image a PDF declares and the size at
+which the page draws it, so you can judge whether a missing element could
+plausibly be inside one. Where any doubt remains, render the page and look at
+it. `docs/sources.md` records that being done for the three published labels
+this project calibrated against, and what it showed.
+
+## Which ruleset, for which year
+
+The tool encodes one ruleset and prints its identifier and effective date on
+every report.
+
+For the labels the Energy Commission currently publishes, which cover data year
+2024, that ruleset is the one in force: section 1393.1(b)(2) requires a label
+to be provided by October 1 of each year, so a 2024 label is the disclosure due
+October 1, 2025, after the regulations took effect on June 18, 2025.
+
+For a label from an earlier data year the tool will measure against a later
+ruleset, and it will not warn you, because a data year is not a publication
+date. The printed effective date is what you have. There is no version
+switching, and building it with one ruleset in existence would be building a
+mechanism nothing could test.
 
 ## Grounding
 
@@ -115,20 +159,33 @@ the RPS-eligible subcategory, the emissions intensity units, retired unbundled
 RECs, the unspecified power annotation, the three prescribed footnotes, the
 separate statewide disclosure, the data year, and the displayed column totals.
 
-### 10 checks are registered and enforce nothing
+### 12 checks are registered and enforce nothing
 
 They appear in every report as not evaluated, with a written reason. They are
 in the catalog rather than absent from it because a requirement this tool does
 not measure should be visible, not implied by silence.
 
-They fall into four groups: requirements that need a second document the tool
-does not have; requirements whose trigger condition is a fact about a supplier's
-business rather than about the document; requirements that turn on a date whose
-applicability the published text does not settle; and one arithmetic check that
-was deliberately left unimplemented because a mis-parsed column would produce a
-false finding against a named supplier.
+Each one also says whether the gap can ever close:
 
-Run `uv run power-content-check catalog` for the full list with reasons.
+- **permanent**, for eight of them. No version of this tool that reads the
+  document it is handed can decide the requirement, because the fact it turns
+  on is not in the document, or because deciding it would mean inventing a rule
+  no published source supplies. Needing the supplier's annual resource report
+  as a second input is one. Needing to know whether a portfolio was negotiated
+  under private agreement is another. So is adding up a column of whole
+  percentages that were rounded, against a total the label displays, with no
+  rounding rule or tolerance in the published text to compare against.
+
+- **conditional**, for four of them, where the reason names what would unblock
+  it: a capability this tool has chosen not to build, or a document that does
+  not exist yet.
+
+Run `uv run power-content-check catalog` for the full list with reasons, and
+see [docs/adr/0005](docs/adr/0005-say-whether-a-gap-can-ever-close.md).
+
+Neither count measures coverage, and finding two more gaps did not close any.
+The number of implemented checks is the one that moves when the tool gets
+better.
 
 ## Examples
 
@@ -139,6 +196,9 @@ supplier's figures.
 `scripts/fetch_examples.py` will fetch a small number of published labels into
 a local, ignored cache if you want to exercise the tool against real documents.
 It honours robots.txt, rate limits itself, and refuses to fetch in bulk.
+
+`scripts/inspect_artwork.py` reports the artwork on a PDF page. Neither script
+is part of the package and neither is invoked by the CLI, which is offline.
 
 ## Development
 

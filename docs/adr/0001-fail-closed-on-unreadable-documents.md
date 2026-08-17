@@ -70,8 +70,8 @@ The property is testable as a hash comparison, and is tested that way in
 for a clean input must not hash the same. The hash excludes file paths,
 timestamps and the tool version, so it compares conclusions rather than inputs.
 
-Exit code 2 becomes the ordinary result for a well formed label, because ten
-registered checks enforce nothing and always report as not evaluated. Callers
+Exit code 2 becomes the ordinary result for a well formed label, because the
+registered checks that enforce nothing always report as not evaluated. Callers
 who want "no deviations found" should test for zero `does_not_conform` results
 rather than for exit code 0. The README says so.
 

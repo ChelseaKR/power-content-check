@@ -20,7 +20,7 @@ from power_content_check.checks import (
     implemented_checks,
     unimplemented_checks,
 )
-from power_content_check.model import Basis, CheckSpec, Citation, Source
+from power_content_check.model import Basis, Blocker, CheckSpec, Citation, Source
 
 #: Frozen. Append only. Never renumber, never reuse.
 EXPECTED_IDS = (
@@ -52,6 +52,8 @@ EXPECTED_IDS = (
     "PCL026",
     "PCL027",
     "PCL028",
+    "PCL029",
+    "PCL030",
 )
 
 #: Frozen alongside the identifiers. A check may have its wording improved, but
@@ -85,6 +87,24 @@ EXPECTED_TITLES = {
     "PCL026": "GHG emissions intensity value",
     "PCL027": "Disclosure timing",
     "PCL028": "Custom electricity portfolios",
+    "PCL029": "Retail sales and loss-adjusted load statement",
+    "PCL030": "Emerging Technologies group",
+}
+
+#: Pinned deliberately. A check here is one that no version of this tool,
+#: reading the document it is handed, can decide. Moving an identifier out of
+#: this set is a decision someone has to make on purpose, in a diff, with the
+#: reason rewritten. That is the point: it stops the same question being
+#: reopened every time somebody reads the catalog.
+PERMANENTLY_UNIMPLEMENTABLE = {
+    "PCL019",
+    "PCL020",
+    "PCL022",
+    "PCL025",
+    "PCL026",
+    "PCL027",
+    "PCL028",
+    "PCL030",
 }
 
 
@@ -124,9 +144,35 @@ def test_implemented_and_unimplemented_are_consistent(check: object) -> None:
     if spec.implemented:
         assert run is not None, f"{spec.id} claims to be implemented but has no callable"
         assert spec.unimplemented_reason is None
+        assert spec.blocker is None
     else:
         assert run is None, f"{spec.id} is unimplemented but carries a callable"
         assert spec.unimplemented_reason, f"{spec.id} must say why it is not implemented"
+        assert spec.blocker is not None, f"{spec.id} must say whether that is permanent"
+
+
+def test_permanent_and_conditional_blockers_are_pinned() -> None:
+    permanent = {c.spec.id for c in unimplemented_checks() if c.spec.blocker is Blocker.PERMANENT}
+    assert permanent == PERMANENTLY_UNIMPLEMENTABLE
+
+
+def test_a_conditional_blocker_names_what_would_unblock_it() -> None:
+    """A reason that does not say what would change is a permanent one in disguise."""
+    openers = ("becomes", "unblocked", "would settle it", "has not built", "does not exist")
+    for check in unimplemented_checks():
+        if check.spec.blocker is not Blocker.CONDITIONAL:
+            continue
+        reason = (check.spec.unimplemented_reason or "").lower()
+        assert any(token in reason for token in openers), check.spec.id
+
+
+def test_no_reason_is_a_placeholder() -> None:
+    """'Not implemented yet' is not a reason. See docs/adr/0002."""
+    for check in unimplemented_checks():
+        reason = (check.spec.unimplemented_reason or "").strip()
+        assert len(reason) > 80, check.spec.id
+        assert "not implemented yet" not in reason.lower(), check.spec.id
+        assert "todo" not in reason.lower(), check.spec.id
 
 
 def test_template_basis_cites_the_issued_format() -> None:
@@ -140,7 +186,7 @@ def test_template_basis_cites_the_issued_format() -> None:
 def test_the_split_between_implemented_and_registered_is_visible() -> None:
     assert len(implemented_checks()) + len(unimplemented_checks()) == len(CHECKS)
     assert len(implemented_checks()) == 18
-    assert len(unimplemented_checks()) == 10
+    assert len(unimplemented_checks()) == 12
 
 
 def test_fuel_type_lists_match_the_regulation() -> None:
@@ -183,4 +229,29 @@ class TestSpecValidation:
                 basis=Basis.REGULATION_TEXT,
                 implemented=False,
                 what_it_looks_for="w",
+                blocker=Blocker.PERMANENT,
+            )
+
+    def test_unimplemented_check_must_classify_its_blocker(self) -> None:
+        with pytest.raises(ValueError, match="whether that is permanent"):
+            CheckSpec(
+                id="PCL999",
+                title="t",
+                citation=self._citation(),
+                basis=Basis.REGULATION_TEXT,
+                implemented=False,
+                what_it_looks_for="w",
+                unimplemented_reason="because",
+            )
+
+    def test_implemented_check_may_not_carry_a_blocker(self) -> None:
+        with pytest.raises(ValueError, match="carries a blocker"):
+            CheckSpec(
+                id="PCL999",
+                title="t",
+                citation=self._citation(),
+                basis=Basis.REGULATION_TEXT,
+                implemented=True,
+                what_it_looks_for="w",
+                blocker=Blocker.PERMANENT,
             )

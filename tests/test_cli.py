@@ -121,10 +121,11 @@ class TestCatalog:
     def test_catalog_json_carries_citations(self, capsys: pytest.CaptureFixture[str]) -> None:
         main(["catalog", "--json"])
         payload = json.loads(capsys.readouterr().out)
-        assert len(payload) == 28
+        assert len(payload) == 30
         for entry in payload:
             assert entry["citation"]["source_url"].startswith("https://")
             assert entry["citation"]["quote"]
+            assert entry["implemented"] or entry["blocker"]
 
     def test_version_flag(self, capsys: pytest.CaptureFixture[str]) -> None:
         with pytest.raises(SystemExit) as excinfo:

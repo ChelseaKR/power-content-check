@@ -56,6 +56,8 @@ class TestJson:
         assert document["readability"] == "readable"
         assert document["sha256"]
         assert set(document["counts"]) == {"conforms", "does_not_conform", "not_evaluated"}
+        assert "image_count" in document
+        assert document["extraction_basis"]
 
     def test_unreadable_document_json(self, image_only_pdf: Path) -> None:
         payload = json.loads(render_json(check_paths([image_only_pdf])))
@@ -87,6 +89,10 @@ class TestText:
         out = render_text(check_paths([deficient_label]))
         assert "Exit code:" in out
 
+    def test_the_document_header_states_what_was_looked_at(self, illustrated_pdf: Path) -> None:
+        out = _flat(render_text(check_paths([illustrated_pdf])))
+        assert "Basis: the text layer of this PDF, which also embeds 5 images." in out
+
 
 class TestCatalogRendering:
     def test_text_catalog_quotes_every_source(self) -> None:
@@ -99,7 +105,13 @@ class TestCatalogRendering:
         assert out.count("URL:") == len(CHECKS)
 
     def test_unimplemented_entries_give_a_reason(self) -> None:
-        assert "Why not implemented:" in render_catalog()
+        assert "Why not implemented [" in render_catalog()
+
+    def test_unimplemented_entries_say_whether_the_block_is_permanent(self) -> None:
+        out = render_catalog()
+        assert "Why not implemented [permanent]:" in out
+        assert "Why not implemented [conditional]:" in out
+        assert "REGISTERED, ENFORCES NOTHING, permanent" in out
 
     def test_json_catalog_is_machine_readable(self) -> None:
         from power_content_check.checks import CHECKS

@@ -106,6 +106,68 @@ class TestSupplierName:
         assert statuses["PCL001"] is Status.CONFORMS
 
 
+class TestEveryDeviationSaysWhatWasLookedAt:
+    """A deviation is an absence from extracted text, and says so.
+
+    Two of the deviations this tool reports against published labels are the
+    absence of a telephone number and the absence of the words "Energy
+    Commission". Whether that is a property of the document or a limit of PDF
+    text extraction is the difference between a fact and an accusation, so the
+    answer is attached to the finding itself.
+    """
+
+    def _details(self, path: Path) -> list[str]:
+        report = check_document(path, CheckContext())
+        return [r.detail or "" for r in report.results if r.status is Status.DOES_NOT_CONFORM]
+
+    def test_a_deviation_on_a_text_input_names_the_input(self, deficient_label: Path) -> None:
+        details = self._details(deficient_label)
+        assert details
+        assert all("plain text file" in detail for detail in details)
+
+    def test_a_deviation_on_an_illustrated_pdf_names_the_artwork(
+        self, illustrated_pdf: Path
+    ) -> None:
+        details = self._details(illustrated_pdf)
+        assert details
+        assert all("embeds 5 images" in detail for detail in details)
+
+    def test_a_deviation_on_an_unillustrated_pdf_says_so(self, text_layer_pdf: Path) -> None:
+        details = self._details(text_layer_pdf)
+        assert details
+        assert all("embeds no image" in detail for detail in details)
+
+    def test_the_finding_itself_claims_only_the_extracted_text(self, deficient_label: Path) -> None:
+        assert "extracted text" in _finding(deficient_label, "PCL002")
+        assert "extracted text" in _finding(deficient_label, "PCL004")
+
+
+class TestEnergyCommissionNaming:
+    """PCL004 reports what is present, not only what is missing."""
+
+    def _result(self, tmp_path: Path, body: str) -> tuple[Status, str]:
+        from power_content_check.checks import BY_ID
+
+        path = tmp_path / "synthetic.txt"
+        path.write_text(body + "\n" + ("filler line for length. " * 20))
+        document = extract(path)
+        assert isinstance(document, LabelDocument)
+        run = BY_ID["PCL004"].run
+        assert run is not None
+        result = run(document, CheckContext())
+        return result.status, result.detail or ""
+
+    def test_the_abbreviation_is_reported_but_not_accepted(self, tmp_path: Path) -> None:
+        status, detail = self._result(tmp_path, "Visit the CEC webpage at the link below.")
+        assert status is Status.DOES_NOT_CONFORM
+        assert "the abbreviation 'CEC'" in detail
+        assert "nowhere defines 'CEC'" in detail
+
+    def test_the_defined_term_conforms(self, tmp_path: Path) -> None:
+        status, _ = self._result(tmp_path, "Contact the California Energy Commission.")
+        assert status is Status.CONFORMS
+
+
 class TestNarrowMatching:
     """Prose must not satisfy a check that is about a row of the table."""
 

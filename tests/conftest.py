@@ -25,6 +25,116 @@ def deficient_label() -> Path:
     return FIXTURES / "deficient_label.txt"
 
 
+def _pdf(objects: list[bytes]) -> bytes:
+    """Assemble numbered objects into a PDF with a correct cross reference table.
+
+    Written by hand rather than with a PDF library because these fixtures need
+    to control exactly what the page declares: a text layer, and a chosen
+    number of images, including images reached through a Form XObject. That is
+    the shape the image counter has to get right, and no writer API in the
+    dependency set produces it.
+    """
+    out = bytearray(b"%PDF-1.7\n")
+    offsets: list[int] = []
+    for number, body in enumerate(objects, start=1):
+        offsets.append(len(out))
+        out += f"{number} 0 obj\n".encode() + body + b"\nendobj\n"
+    start = len(out)
+    size = len(objects) + 1
+    out += f"xref\n0 {size}\n".encode() + b"0000000000 65535 f \n"
+    for offset in offsets:
+        out += f"{offset:010d} 00000 n \n".encode()
+    out += f"trailer\n<< /Size {size} /Root 1 0 R >>\nstartxref\n{start}\n%%EOF\n".encode()
+    return bytes(out)
+
+
+def _image_object() -> bytes:
+    return (
+        b"<< /Type /XObject /Subtype /Image /Width 1 /Height 1 /ColorSpace /DeviceGray "
+        b"/BitsPerComponent 8 /Length 1 >>\nstream\n\xff\nendstream"
+    )
+
+
+def _stream(dictionary: str, payload: bytes) -> bytes:
+    return (
+        f"<< {dictionary} /Length {len(payload)} >>\nstream\n".encode() + payload + b"\nendstream"
+    )
+
+
+LABEL_LINES = (
+    "2024 POWER CONTENT LABEL",
+    "Example Municipal Utility District",
+    "Greenhouse Gas Emissions Intensity in lbs of CO2e per megawatt hour: 410",
+    "Renewables and Zero-Carbon Resources",
+    "RPS Eligible Renewables 40%",
+    "Solar 20%  Wind 12%  Geothermal 5%  Biomass and Biogas 2%",
+    "Eligible Hydroelectric 1%  Large Hydroelectric 8%  Nuclear 9%",
+    "Fossil Fuels  Natural Gas 30%  Coal and Petroleum 3%",
+    "Unspecified Power (primarily fossil fuels) 10%",
+    "Total 100%",
+)
+
+
+def synthetic_label_pdf(path: Path, images: int = 0, nested_images: int = 0) -> Path:
+    """A one page PDF carrying a readable text layer and a chosen image count."""
+    drawing = ["BT /F1 11 Tf"]
+    for index, line in enumerate(LABEL_LINES):
+        drawing.append(f"1 0 0 1 40 {740 - index * 18} Tm ({line}) Tj")
+    drawing.append("ET")
+    for slot in range(images):
+        drawing.append(f"q 10 0 0 10 {60 + slot * 20} 300 cm /Im{slot} Do Q")
+    if nested_images:
+        drawing.append("q 10 0 0 10 60 200 cm /Fm0 Do Q")
+    content = "\n".join(drawing).encode("ascii")
+
+    first_image = 6
+    resources = ["/Font << /F1 5 0 R >>"]
+    xobjects = [f"/Im{slot} {first_image + slot} 0 R" for slot in range(images)]
+    form_number = first_image + images
+    nested_first = form_number + 1
+    if nested_images:
+        xobjects.append(f"/Fm0 {form_number} 0 R")
+    if xobjects:
+        resources.append(f"/XObject << {' '.join(xobjects)} >>")
+
+    objects = [
+        b"<< /Type /Catalog /Pages 2 0 R >>",
+        b"<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
+        (
+            "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Contents 4 0 R "
+            f"/Resources << {' '.join(resources)} >> >>"
+        ).encode("ascii"),
+        _stream("", content),
+        b"<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>",
+    ]
+    objects += [_image_object() for _ in range(images)]
+    if nested_images:
+        nested_refs = " ".join(f"/In{n} {nested_first + n} 0 R" for n in range(nested_images))
+        objects.append(
+            _stream(
+                "/Type /XObject /Subtype /Form /BBox [0 0 1 1] "
+                f"/Resources << /XObject << {nested_refs} >> >>",
+                b"q Q",
+            )
+        )
+        objects += [_image_object() for _ in range(nested_images)]
+
+    path.write_bytes(_pdf(objects))
+    return path
+
+
+@pytest.fixture
+def text_layer_pdf(tmp_path: Path) -> Path:
+    """A readable PDF with no image on it."""
+    return synthetic_label_pdf(tmp_path / "plain_label.pdf")
+
+
+@pytest.fixture
+def illustrated_pdf(tmp_path: Path) -> Path:
+    """A readable PDF that also carries artwork, two of it nested in a form."""
+    return synthetic_label_pdf(tmp_path / "illustrated_label.pdf", images=3, nested_images=2)
+
+
 @pytest.fixture
 def image_only_pdf(tmp_path: Path) -> Path:
     """A structurally valid PDF with a page and no text layer.

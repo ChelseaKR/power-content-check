@@ -7,6 +7,13 @@ UNREADABLE, and an unreadable document never reaches a check.
 
 The failure this guards against is a document the tool could not read being
 reported as clean. Silence from an extractor is not evidence of conformance.
+
+A second, quieter version of the same failure is a document the tool could
+only partly read. Extraction reads a text layer; a PDF can also draw text as a
+picture, and a picture is invisible here. Every finding this tool reports is
+therefore a statement about extracted text, and this module measures what else
+the document is carrying so that the limit travels with the finding. See
+:func:`count_images`.
 """
 
 from __future__ import annotations
@@ -14,6 +21,7 @@ from __future__ import annotations
 import hashlib
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Any
 
 import pypdf
 
@@ -32,6 +40,38 @@ DEFAULT_MIN_TEXT_CHARS = 200
 
 SUPPORTED_SUFFIXES = (".pdf", ".txt")
 
+#: How far to follow Form XObjects when counting the images a page declares.
+#: A page nested deeper than this is pathological, and the count stops rather
+#: than descending forever.
+MAX_FORM_DEPTH = 4
+
+#: Appended to every deviation this tool reports, so that the basis on which it
+#: looked is attached to the finding rather than left in the documentation.
+TEXT_INPUT_BASIS = (
+    "Basis: the characters in this plain text file. If the file was produced "
+    "from another document, anything that document drew as a picture is not here."
+)
+
+IMAGES_UNCOUNTABLE_BASIS = (
+    "Basis: the text layer of this PDF. Its image resources could not be "
+    "enumerated, so text that is present only as a picture cannot be ruled out."
+)
+
+
+def _pdf_basis(image_count: int) -> str:
+    if image_count == 0:
+        return (
+            "Basis: the text layer of this PDF, which embeds no image. An "
+            "unreadable picture is therefore not an explanation for text this "
+            "tool did not find, though text drawn as vector paths would still "
+            "not be read."
+        )
+    noun = "image" if image_count == 1 else "images"
+    return (
+        f"Basis: the text layer of this PDF, which also embeds {image_count} "
+        f"{noun}. Text that is drawn inside a picture is not read."
+    )
+
 
 @dataclass(frozen=True)
 class LabelDocument:
@@ -40,6 +80,10 @@ class LabelDocument:
     An instance of this class existing is the proof that extraction succeeded.
     Checks take one of these, so a check cannot be run against a document that
     was never read.
+
+    ``image_count`` and ``extraction_basis`` describe how much of the document
+    the tool actually saw. They are not regulatory quantities and no check
+    cites them; they qualify what an absence finding is entitled to mean.
     """
 
     path: Path
@@ -48,6 +92,8 @@ class LabelDocument:
     raw_text: str
     normalized: str
     normalized_lines: list[str]
+    image_count: int | None
+    extraction_basis: str
 
 
 @dataclass(frozen=True)
@@ -66,7 +112,61 @@ def _sha256(data: bytes) -> str:
     return hashlib.sha256(data).hexdigest()
 
 
-def _build(path: Path, digest: str, page_count: int | None, text: str) -> LabelDocument:
+def _images_in(resources: Any, seen: set[tuple[int, int]], depth: int) -> int:
+    """Count image XObjects reachable from one resource dictionary."""
+    if resources is None or depth > MAX_FORM_DEPTH:
+        return 0
+    xobjects = resources.get_object().get("/XObject")
+    if xobjects is None:
+        return 0
+    count = 0
+    for ref in xobjects.get_object().values():
+        key = getattr(ref, "idnum", None)
+        if key is not None:
+            marker = (int(key), int(ref.generation))
+            if marker in seen:
+                continue
+            seen.add(marker)
+        obj = ref.get_object()
+        subtype = obj.get("/Subtype")
+        if subtype == "/Image":
+            count += 1
+        elif subtype == "/Form":
+            count += _images_in(obj.get("/Resources"), seen, depth + 1)
+    return count
+
+
+def count_images(pages: list[Any]) -> int | None:
+    """How many raster images the pages declare, or ``None`` if that is unknown.
+
+    Why this is here at all: every deviation this tool reports is the absence
+    of something from a text layer. That statement is only worth as much as the
+    tool's ability to say the missing element is not sitting in a picture the
+    extractor cannot read. Counting the pictures does not read them, but it
+    tells a reader which of the two explanations is even available.
+
+    What is counted: image XObjects reachable from each page's resources,
+    including those nested inside Form XObjects. What is not counted: inline
+    images, and text drawn as vector paths. A count of zero therefore narrows
+    the possibilities without closing them, and the sentence the tool prints
+    for a zero count says exactly that.
+    """
+    try:
+        return sum(_images_in(page.get("/Resources"), set(), 0) for page in pages)
+    except Exception:
+        # Never fatal. An unknown count downgrades the claim the tool makes
+        # about an absence; it does not stop the document being checked.
+        return None
+
+
+def _build(
+    path: Path,
+    digest: str,
+    page_count: int | None,
+    text: str,
+    image_count: int | None,
+    extraction_basis: str,
+) -> LabelDocument:
     return LabelDocument(
         path=path,
         sha256=digest,
@@ -74,6 +174,8 @@ def _build(path: Path, digest: str, page_count: int | None, text: str) -> LabelD
         raw_text=text,
         normalized=normalize(text),
         normalized_lines=normalize_lines(text),
+        image_count=image_count,
+        extraction_basis=extraction_basis,
     )
 
 
@@ -103,7 +205,7 @@ def _open_pdf(path: Path, digest: str) -> pypdf.PdfReader | UnreadableDocument:
 
 def _pdf_text(
     reader: pypdf.PdfReader, path: Path, digest: str
-) -> tuple[str, int] | UnreadableDocument:
+) -> tuple[str, list[Any]] | UnreadableDocument:
     try:
         pages = list(reader.pages)
     except Exception as exc:
@@ -124,7 +226,7 @@ def _pdf_text(
                 digest,
                 f"text extraction failed on page {index + 1}: {type(exc).__name__}",
             )
-    return "\n".join(chunks), len(pages)
+    return "\n".join(chunks), pages
 
 
 def _extract_pdf(path: Path, data: bytes, digest: str, min_chars: int) -> ExtractResult:
@@ -136,7 +238,7 @@ def _extract_pdf(path: Path, data: bytes, digest: str, min_chars: int) -> Extrac
     if isinstance(extracted, UnreadableDocument):
         return extracted
 
-    text, page_count = extracted
+    text, pages = extracted
     if len(text.strip()) < min_chars:
         return UnreadableDocument(
             path,
@@ -147,7 +249,9 @@ def _extract_pdf(path: Path, data: bytes, digest: str, min_chars: int) -> Extrac
                 "with no text layer"
             ),
         )
-    return _build(path, digest, page_count, text)
+    images = count_images(pages)
+    basis = IMAGES_UNCOUNTABLE_BASIS if images is None else _pdf_basis(images)
+    return _build(path, digest, len(pages), text, images, basis)
 
 
 def _extract_text(path: Path, data: bytes, digest: str, min_chars: int) -> ExtractResult:
@@ -168,7 +272,7 @@ def _extract_text(path: Path, data: bytes, digest: str, min_chars: int) -> Extra
                 f"{min_chars} character minimum"
             ),
         )
-    return _build(path, digest, None, text)
+    return _build(path, digest, None, text, None, TEXT_INPUT_BASIS)
 
 
 def extract(path: Path, min_chars: int = DEFAULT_MIN_TEXT_CHARS) -> ExtractResult:

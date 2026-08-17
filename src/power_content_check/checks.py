@@ -19,6 +19,12 @@ Ground rules for this file, in order of importance:
 4. Findings describe the document. They do not describe the supplier. A
    deviation from the issued format is not a compliance determination and the
    wording must not read like one.
+
+5. Every deviation says what the tool looked at. A check here reports that
+   something is absent from extracted text, which is a smaller claim than
+   saying it is absent from the document. :func:`_bad` attaches the document's
+   extraction basis to every deviation so that the smaller claim is the one on
+   the page.
 """
 
 from __future__ import annotations
@@ -29,7 +35,7 @@ from dataclasses import dataclass
 
 from .citations import issued_format, reg
 from .extract import LabelDocument
-from .model import Basis, CheckResult, CheckSpec, Status
+from .model import Basis, Blocker, CheckResult, CheckSpec, Status
 
 # ---------------------------------------------------------------------------
 # matching helpers
@@ -145,12 +151,24 @@ class CheckContext:
 CheckFn = Callable[[LabelDocument, CheckContext], CheckResult]
 
 
+def _with_basis(doc: LabelDocument, detail: str | None) -> str:
+    """Attach what the tool was able to look at to what it concluded."""
+    return " ".join(part for part in (detail, doc.extraction_basis) if part)
+
+
 def _ok(check_id: str, finding: str, detail: str | None = None) -> CheckResult:
     return CheckResult(check_id, Status.CONFORMS, finding, detail)
 
 
-def _bad(check_id: str, finding: str, detail: str | None = None) -> CheckResult:
-    return CheckResult(check_id, Status.DOES_NOT_CONFORM, finding, detail)
+def _bad(doc: LabelDocument, check_id: str, finding: str, detail: str | None = None) -> CheckResult:
+    """A deviation, carrying the basis on which the tool looked.
+
+    Every deviation this tool reports is the absence of something from text it
+    could read. Whether that absence is a property of the document or a limit
+    of extraction depends on what else the document is carrying, so the answer
+    travels with the finding rather than living only in the documentation.
+    """
+    return CheckResult(check_id, Status.DOES_NOT_CONFORM, finding, _with_basis(doc, detail))
 
 
 def _unknown(check_id: str, finding: str, detail: str | None = None) -> CheckResult:
@@ -176,8 +194,9 @@ def _pcl001(doc: LabelDocument, ctx: CheckContext) -> CheckResult:
     if wanted and wanted in doc.normalized:
         return _ok("PCL001", f"The label carries the company name '{ctx.supplier_name}'.")
     return _bad(
+        doc,
         "PCL001",
-        f"The company name '{ctx.supplier_name}' does not appear in the label text.",
+        f"The company name '{ctx.supplier_name}' does not appear in the extracted text.",
         "Section 1393.1(c)(4) lists the retail supplier's company name among the "
         "contents each label discloses.",
     )
@@ -189,14 +208,16 @@ def _pcl002(doc: LabelDocument, ctx: CheckContext) -> CheckResult:
         return _ok("PCL002", f"{len(phones)} distinct telephone numbers appear on the label.")
     if len(phones) == 1:
         return _bad(
+            doc,
             "PCL002",
-            "Only one telephone number appears on the label.",
+            "Only one telephone number appears in the extracted text.",
             "Section 1393.1(c)(4) lists a telephone number for the retail supplier "
             "and a telephone number for the Energy Commission, which is two numbers.",
         )
     return _bad(
+        doc,
         "PCL002",
-        "No telephone number appears in the label text.",
+        "No telephone number appears in the extracted text.",
         "Section 1393.1(c)(4) lists a telephone number for the retail supplier "
         "and a telephone number for the Energy Commission.",
     )
@@ -211,8 +232,9 @@ def _pcl003(doc: LabelDocument, ctx: CheckContext) -> CheckResult:
             f"Observed: {', '.join(sorted(set(others))[:5])}",
         )
     return _bad(
+        doc,
         "PCL003",
-        "No web address for the retail supplier appears in the label text.",
+        "No web address for the retail supplier appears in the extracted text.",
         "Section 1393.1(c)(4) lists the retail supplier's website address among the "
         "contents each label discloses.",
     )
@@ -221,12 +243,22 @@ def _pcl003(doc: LabelDocument, ctx: CheckContext) -> CheckResult:
 def _pcl004(doc: LabelDocument, ctx: CheckContext) -> CheckResult:
     if "energy commission" in doc.normalized:
         return _ok("PCL004", "The label names the Energy Commission.")
+    observed = []
+    if re.search(r"\bcec\b", doc.normalized):
+        observed.append("the abbreviation 'CEC'")
+    if any("energy.ca.gov" in d for d in _domains(doc)):
+        observed.append("an energy.ca.gov web address")
+    seen = f"Present instead: {', '.join(observed)}. " if observed else ""
     return _bad(
+        doc,
         "PCL004",
-        "The words 'Energy Commission' do not appear in the label text.",
+        "The words 'Energy Commission' do not appear in the extracted text.",
         "Section 1393.1(c)(4) lists the name of the Energy Commission among the "
-        "contents each label discloses. A link to energy.ca.gov is checked "
-        "separately by PCL005 and is not treated as the name.",
+        "contents each label discloses, and section 1391 defines 'Energy Commission' "
+        "to mean the State Energy Resources Conservation and Development Commission. "
+        f"{seen}"
+        "The regulation nowhere defines 'CEC', so this check does not read the "
+        "abbreviation as the name, and the web address is checked separately by PCL005.",
     )
 
 
@@ -234,8 +266,9 @@ def _pcl005(doc: LabelDocument, ctx: CheckContext) -> CheckResult:
     if any("energy.ca.gov" in d for d in _domains(doc)):
         return _ok("PCL005", "The label carries an energy.ca.gov web address.")
     return _bad(
+        doc,
         "PCL005",
-        "No Energy Commission web address appears in the label text.",
+        "No Energy Commission web address appears in the extracted text.",
         "Section 1393.1(c)(4) lists the website address of the Energy Commission "
         "among the contents each label discloses.",
     )
@@ -260,9 +293,10 @@ def _pcl006(doc: LabelDocument, ctx: CheckContext) -> CheckResult:
     )
     if missing:
         return _bad(
+            doc,
             "PCL006",
-            f"{len(missing)} of the 10 unconditional fuel type categories are absent: "
-            f"{', '.join(missing)}.",
+            f"{len(missing)} of the 10 unconditional fuel type categories are absent "
+            f"from the extracted text: {', '.join(missing)}.",
             detail,
         )
     return _ok("PCL006", "All 10 unconditional fuel type categories appear on the label.", detail)
@@ -272,8 +306,9 @@ def _pcl007(doc: LabelDocument, ctx: CheckContext) -> CheckResult:
     if "renewables and zero carbon resources" in doc.normalized:
         return _ok("PCL007", "The 'Renewables and Zero-Carbon Resources' group appears.")
     return _bad(
+        doc,
         "PCL007",
-        "The 'Renewables and Zero-Carbon Resources' group does not appear in the label text.",
+        "The 'Renewables and Zero-Carbon Resources' group does not appear in the extracted text.",
         "Section 1393.1(c)(2)(A) requires the fuel mix to be displayed in this group.",
     )
 
@@ -282,8 +317,9 @@ def _pcl008(doc: LabelDocument, ctx: CheckContext) -> CheckResult:
     if re.search(r"rps\s+eligible\s+renewables", doc.normalized):
         return _ok("PCL008", "RPS-eligible renewables appear as a named subcategory.")
     return _bad(
+        doc,
         "PCL008",
-        "RPS-eligible renewables do not appear as a named subcategory.",
+        "RPS-eligible renewables do not appear as a named subcategory in the extracted text.",
         "Section 1393.1(c)(2)(A) provides that RPS-eligible renewables shall be "
         "identified as a subcategory of the Renewables and Zero-Carbon Resources group.",
     )
@@ -293,8 +329,9 @@ def _pcl009(doc: LabelDocument, ctx: CheckContext) -> CheckResult:
     if "fossil fuels" in doc.normalized:
         return _ok("PCL009", "The 'Fossil Fuels' group appears.")
     return _bad(
+        doc,
         "PCL009",
-        "The 'Fossil Fuels' group does not appear in the label text.",
+        "The 'Fossil Fuels' group does not appear in the extracted text.",
         "Section 1393.1(c)(2)(B) requires the fuel mix to be displayed in this group.",
     )
 
@@ -303,8 +340,9 @@ def _pcl010(doc: LabelDocument, ctx: CheckContext) -> CheckResult:
     text = doc.normalized
     if "greenhouse gas emissions intensity" not in text and "ghg emissions intensity" not in text:
         return _bad(
+            doc,
             "PCL010",
-            "No greenhouse gas emissions intensity disclosure appears on the label.",
+            "No greenhouse gas emissions intensity disclosure appears in the extracted text.",
             "Section 1393.1(c)(3) requires the GHG emissions intensity of each "
             "electricity portfolio to be disclosed.",
         )
@@ -326,6 +364,7 @@ def _pcl010(doc: LabelDocument, ctx: CheckContext) -> CheckResult:
         if not present
     ]
     return _bad(
+        doc,
         "PCL010",
         "The GHG emissions intensity is present but its units are not fully stated: "
         f"missing {', '.join(missing)}.",
@@ -338,8 +377,9 @@ def _pcl011(doc: LabelDocument, ctx: CheckContext) -> CheckResult:
     if re.search(r"retired\s+unbundled\s+recs?|unbundled\s+recs?\s+retired", doc.normalized):
         return _ok("PCL011", "The label discloses retired unbundled RECs.")
     return _bad(
+        doc,
         "PCL011",
-        "No disclosure of retired unbundled RECs appears on the label.",
+        "No disclosure of retired unbundled RECs appears in the extracted text.",
         "Section 1393.1(c)(5) requires the quantity of unbundled RECs retired in "
         "association with each electricity portfolio, expressed as a percentage of "
         "retail sales. A mention of unbundled RECs in the footnote required by "
@@ -357,6 +397,7 @@ def _pcl012(doc: LabelDocument, ctx: CheckContext) -> CheckResult:
                 f"Unspecified power is annotated as primarily {group}.",
             )
         return _bad(
+            doc,
             "PCL012",
             f"Unspecified power is annotated as primarily '{group}', which is not one "
             "of the two resource groups.",
@@ -364,8 +405,10 @@ def _pcl012(doc: LabelDocument, ctx: CheckContext) -> CheckResult:
             "'Fossil Fuels' or 'Renewables and Zero-Carbon Resources'.",
         )
     return _bad(
+        doc,
         "PCL012",
-        "The display of unspecified power is not annotated with its predominant resource group.",
+        "The display of unspecified power is not annotated with its predominant resource "
+        "group anywhere in the extracted text.",
         "Section 1393.1(c)(7) requires the display of unspecified power to be "
         "annotated to identify whether it was provided primarily by 'Fossil Fuels' "
         "or 'Renewables and Zero-Carbon Resources'.",
@@ -379,8 +422,10 @@ def _footnote_check(check_id: str, lead: str, ordinal: str) -> CheckFn:
         if normalize(lead) in doc.normalized:
             return _ok(check_id, f"The footnote required by section 1393.1(l)({ordinal}) appears.")
         return _bad(
+            doc,
             check_id,
-            f"The footnote required by section 1393.1(l)({ordinal}) does not appear.",
+            f"The footnote required by section 1393.1(l)({ordinal}) does not appear in "
+            "the extracted text.",
             f"The check matches the opening clause of the prescribed text: '{lead}'. "
             "It does not compare the whole footnote word for word.",
         )
@@ -410,8 +455,9 @@ def _pcl016(doc: LabelDocument, ctx: CheckContext) -> CheckResult:
                 f"Matched the rendering '{rendering}'.",
             )
     return _bad(
+        doc,
         "PCL016",
-        "The label does not separately disclose the statewide figures.",
+        "No separate statewide disclosure appears in the extracted text.",
         "Section 1393.1(a) requires the fuel mix and GHG emissions intensity of "
         "total California system electricity to be disclosed separately, and "
         "section 1393.1(c)(1) names the quantity total California loss-adjusted "
@@ -425,8 +471,9 @@ def _pcl017(doc: LabelDocument, ctx: CheckContext) -> CheckResult:
     if match:
         return _ok("PCL017", f"The label identifies its data year as {match.group(1)}.")
     return _bad(
+        doc,
         "PCL017",
-        "The label does not identify the calendar year it covers.",
+        "The extracted text does not identify the calendar year the label covers.",
         "Section 1393.1(a) scopes each label to the previous calendar year, and the "
         "labels the Energy Commission issues under section 1393.1(i) carry the year "
         "in the title, in the form '2024 POWER CONTENT LABEL'.",
@@ -442,11 +489,14 @@ def _pcl018(doc: LabelDocument, ctx: CheckContext) -> CheckResult:
         off = [v for v in values if v != 100.0]
         if off:
             return _bad(
+                doc,
                 "PCL018",
                 f"A displayed column total is not 100 percent: {off}.",
                 "Section 1392(b)(1) expresses the fuel mix as percentages of the "
                 "portfolio's retail sales, and the labels the Energy Commission "
-                "issues display a total row of 100 percent for every column.",
+                "issues display a total row of 100 percent for every column. This "
+                "reads the total the label itself displays. It does not add up the "
+                "rows above it, for the reason recorded against PCL025.",
             )
         return _ok(
             "PCL018",
@@ -455,8 +505,11 @@ def _pcl018(doc: LabelDocument, ctx: CheckContext) -> CheckResult:
     return _unknown(
         "PCL018",
         "Not evaluated: no total row was located in the extracted text.",
-        "Without a total row there is nothing to compare, and this tool does not "
-        "recompute a supplier's fuel mix. See PCL025.",
+        _with_basis(
+            doc,
+            "Without a total row there is nothing to compare, and this tool does not "
+            "recompute a supplier's fuel mix. See PCL025.",
+        ),
     )
 
 
@@ -501,6 +554,7 @@ def _registered_only(
     citation_locator: str,
     quote: str,
     reason: str,
+    blocker: Blocker,
     basis: Basis = Basis.REGULATION_TEXT,
 ) -> RegisteredCheck:
     return RegisteredCheck(
@@ -512,6 +566,7 @@ def _registered_only(
             implemented=False,
             what_it_looks_for="Nothing. This check is registered but enforces no rule.",
             unimplemented_reason=reason,
+            blocker=blocker,
         ),
         run=None,
     )
@@ -707,6 +762,11 @@ CHECKS: tuple[RegisteredCheck, ...] = (
     # cited source that this tool does not measure. They appear in every report
     # as NOT_EVALUATED so that the gap is visible rather than implied by
     # silence.
+    #
+    # Every one carries a Blocker. PERMANENT means no version of this tool that
+    # reads the document it is handed can decide the requirement. CONDITIONAL
+    # means the reason names something that could change. The point of the
+    # distinction is that a future reader can stop reopening the permanent ones.
     # -----------------------------------------------------------------------
     _registered_only(
         "PCL019",
@@ -714,9 +774,13 @@ CHECKS: tuple[RegisteredCheck, ...] = (
         "section 1393.1(h)",
         "All information contained in the power content label shall appear in one "
         "place without other intervening material.",
-        "Deciding what counts as intervening material requires reading the document "
-        "the label was published in, and judging layout. Extracted text does not "
-        "support that judgment.",
+        "Subdivision (h) governs where the label sits inside the promotional materials "
+        "it is published in, and subdivisions (h)(1) and (h)(2) turn on how many pages "
+        "those materials run to. A file holding the label alone cannot exhibit the "
+        "deviation, and this tool is handed a file rather than a publication, so it "
+        "cannot tell which of the two it has. Deciding what counts as intervening "
+        "material is a second, separate judgment about visual layout.",
+        Blocker.PERMANENT,
     ),
     _registered_only(
         "PCL020",
@@ -729,6 +793,7 @@ CHECKS: tuple[RegisteredCheck, ...] = (
         "Whether any customer is served by a mixture of portfolios is a fact about the "
         "supplier's service, not about the document. The tool cannot establish whether "
         "the requirement was triggered, so it will not report either way.",
+        Blocker.PERMANENT,
     ),
     _registered_only(
         "PCL021",
@@ -738,7 +803,10 @@ CHECKS: tuple[RegisteredCheck, ...] = (
         "the name, phone number, and website address of the Energy Commission.",
         "PCL002, PCL003 and PCL005 count contact details but cannot say which belongs "
         "to the supplier and which to the Energy Commission. Attribution depends on "
-        "layout adjacency that extracted text does not preserve reliably.",
+        "layout adjacency, which the plain text extraction this tool uses does not "
+        "preserve. Reading where on the page each string sits would settle it. That is "
+        "a capability this tool has not built, not a fact missing from the document.",
+        Blocker.CONDITIONAL,
     ),
     _registered_only(
         "PCL022",
@@ -748,7 +816,9 @@ CHECKS: tuple[RegisteredCheck, ...] = (
         "the information reported to the Energy Commission on the annual resource "
         "report for each electricity portfolio and for total power content.",
         "Requires the supplier's annual resource report as a second input. This tool "
-        "reads one document at a time and does not fetch anything.",
+        "reads one document at a time and does not fetch anything, and the report is "
+        "not published alongside the label.",
+        Blocker.PERMANENT,
     ),
     _registered_only(
         "PCL023",
@@ -756,10 +826,14 @@ CHECKS: tuple[RegisteredCheck, ...] = (
         "section 1393.1(c)",
         "Beginning January 1, 2026, each retail supplier shall also include the "
         "following information for its total power content.",
-        "The trigger date is written against the calendar, and the source text does "
-        "not settle whether it attaches to the label's publication date or to its data "
-        "year. Enforcing it would mean choosing an interpretation the published text "
-        "does not supply.",
+        "The trigger attaches to the supplier's act of disclosure, which subdivision "
+        "(b)(2) dates to October 1 of each year, so what matters is when a label was "
+        "disclosed. A label states its data year, not the date it was disclosed. "
+        "Deriving one from the other means chaining subdivision (a) to subdivision "
+        "(b)(2) and then deciding a supplier's obligation window on this tool's own "
+        "reasoning. It becomes implementable if the project accepts that derivation "
+        "and can calibrate it against a label from data year 2025 or later.",
+        Blocker.CONDITIONAL,
     ),
     _registered_only(
         "PCL024",
@@ -769,7 +843,10 @@ CHECKS: tuple[RegisteredCheck, ...] = (
         "percentage of unspecified power provided by either 'Fossil Fuels' or "
         "'Renewables and Zero-Carbon Resources' as those groups are described in "
         "1393.1(c)(2), whichever group was greater for the previous year.",
-        "Same unresolved trigger date as PCL023.",
+        "The same trigger as PCL023, written as 'Beginning in 2026' rather than "
+        "'Beginning January 1, 2026'. Blocked for the same reason and unblocked by the "
+        "same thing.",
+        Blocker.CONDITIONAL,
     ),
     _registered_only(
         "PCL025",
@@ -779,11 +856,19 @@ CHECKS: tuple[RegisteredCheck, ...] = (
         "be calculated by aggregating net purchases of each fuel type and expressed as "
         "percentages of the retail sales of the electricity portfolio or loss-adjusted "
         "load for total power content.",
-        "Summing a column means associating every figure on a row with the right "
-        "portfolio. Extracted text loses column boundaries on labels with several "
-        "portfolios, and a mis-associated column would produce a false arithmetic "
-        "finding against a named supplier. PCL018 checks the total the label itself "
-        "displays instead.",
+        "The label displays whole percentages and the published text prescribes no "
+        "rounding rule and no tolerance, so a column's components need not add to the "
+        "total the label displays. On the three published 2024 labels this project "
+        "read, eight of the fourteen columns had components summing to 99 or 101 "
+        "against a displayed total of 100, including, on all three, the statewide "
+        "column the Energy Commission itself supplies under section 1393.1(a)(3). An "
+        "equality test would report a deviation for correctly rounded arithmetic, and "
+        "any tolerance that suppressed it would be a threshold this tool invented "
+        "rather than one a source supplies. Two further hazards sit behind that one: "
+        "extracted text loses column boundaries on labels with several portfolios, and "
+        "the RPS-eligible row is a subcategory of rows beneath it, so a naive sum "
+        "double counts. PCL018 checks the total the label itself displays instead.",
+        Blocker.PERMANENT,
     ),
     _registered_only(
         "PCL026",
@@ -793,6 +878,7 @@ CHECKS: tuple[RegisteredCheck, ...] = (
         "Recomputing an emissions intensity needs the supplier's procurement data, the "
         "Energy Commission's assigned generator intensities, and loss factors. None of "
         "that is in the label. This tool checks the disclosure, not the number.",
+        Blocker.PERMANENT,
     ),
     _registered_only(
         "PCL027",
@@ -804,7 +890,10 @@ CHECKS: tuple[RegisteredCheck, ...] = (
         "communicating information about electric service, in an easily marked and "
         "identifiable location by October 1 of each year.",
         "A publication date is a fact about when and where a document was posted, not "
-        "a property of the document. This tool is offline and checks files.",
+        "a property of the document. A PDF creation timestamp is neither the date the "
+        "label was provided nor the date it was posted, and it is trivially editable, "
+        "so this tool does not read one. This tool is offline and checks files.",
+        Blocker.PERMANENT,
     ),
     _registered_only(
         "PCL028",
@@ -815,6 +904,41 @@ CHECKS: tuple[RegisteredCheck, ...] = (
         "customers.",
         "Whether a portfolio was negotiated under private agreement is not discoverable "
         "from the label.",
+        Blocker.PERMANENT,
+    ),
+    _registered_only(
+        "PCL029",
+        "Retail sales and loss-adjusted load statement",
+        "section 1393.1(c)(6)",
+        "The label shall indicate that electricity portfolios represent retail sales, "
+        "and that total power content and total California loss-adjusted load represent "
+        "retail sales, other end uses, and losses.",
+        "The regulation prescribes what the label must indicate but not the words it "
+        "must use, unlike subdivision (l), whose footnote text is set out verbatim and "
+        "which PCL013 to PCL015 match against. Any phrase matched here would be a rule "
+        "this tool wrote, and a supplier who said the same thing differently would draw "
+        "a false finding. It becomes checkable on the issued-format basis if the "
+        "Energy Commission's own template carries a fixed rendering of the statement.",
+        Blocker.CONDITIONAL,
+    ),
+    _registered_only(
+        "PCL030",
+        "Emerging Technologies group",
+        "section 1393.1(c)(2)(C)",
+        "Emerging Technologies as identified in Section 1393.1(c)(1)(K). On a "
+        "case-by-case basis, in accordance with other laws and regulations and based on "
+        "information provided by impacted retail suppliers, Commission staff will "
+        "evaluate the specific resource(s) within this category and, for purposes of "
+        "the power content label, classify those resources as 'Emerging Technologies,' "
+        "or, as appropriate based on the resource type, include those resources in the "
+        "categories set forth in Section 1393.1(c)(2)(A) or 1393.1(c)(2)(B).",
+        "Whether this group belongs on a given label depends on whether the supplier "
+        "holds resources in category (K) and on a case-by-case classification Energy "
+        "Commission staff make outside the document. PCL006 reports category (K) where "
+        "it appears and never requires it, because subparagraph (K) is qualified 'if "
+        "applicable'. Registered separately from PCL007 and PCL009 so that the third "
+        "group in the same list is visible rather than silently skipped.",
+        Blocker.PERMANENT,
     ),
 )
 

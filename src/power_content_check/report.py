@@ -45,6 +45,9 @@ def _render_document(document: DocumentReport, verbose: bool) -> list[str]:
         )
         return lines
 
+    if document.extraction_basis:
+        lines.append(_wrap(document.extraction_basis, "  "))
+
     for result in document.results:
         spec = BY_ID[result.check_id].spec
         if result.status is Status.NOT_EVALUATED and not spec.implemented and not verbose:
@@ -135,6 +138,8 @@ def render_catalog(as_json: bool = False) -> str:
     for registered in CHECKS:
         spec = registered.spec
         state = "implemented" if spec.implemented else "REGISTERED, ENFORCES NOTHING"
+        if spec.blocker:
+            state = f"{state}, {spec.blocker.value}"
         lines.append(f"{spec.id}  {spec.title}  [{state}, basis: {spec.basis.value}]")
         lines.append(_wrap(f"Cites: {spec.citation.locator} of", "    "))
         lines.append(_wrap(spec.citation.source.title, "      "))
@@ -143,6 +148,9 @@ def render_catalog(as_json: bool = False) -> str:
         if spec.implemented:
             lines.append(_wrap(f"Looks for: {spec.what_it_looks_for}", "    "))
         else:
-            lines.append(_wrap(f"Why not implemented: {spec.unimplemented_reason}", "    "))
+            blocker = spec.blocker.value if spec.blocker else "unclassified"
+            lines.append(
+                _wrap(f"Why not implemented [{blocker}]: {spec.unimplemented_reason}", "    ")
+            )
         lines.append("")
     return "\n".join(lines)
