@@ -2,9 +2,11 @@
 #
 # One line per signing identity, in the form:
 #   <principal> <key-type> <public-key>
-# for example:
-#   chelsea@example.invalid ssh-ed25519 AAAAC3Nz...
 #
 # Public keys only. Nothing secret belongs in this file.
-# The release workflow fails closed while this file lists no principal, which
-# is the intended state until a signing key is recorded here.
+# The principal below is the maintainer's release-signing key, checked against
+# the GitHub API (users/ChelseaKR/ssh_signing_keys) on 2026-08-17, where it is
+# recorded as "outcome-receipts release signing". A tag signed by any other key
+# does not verify, and the release workflow still fails closed if this file
+# ever lists no principal.
+3114598+ChelseaKR@users.noreply.github.com ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIIOjn/aI0d9jElCoi7qT4+6j9UmgTH7vLGAqJXiKMoCE

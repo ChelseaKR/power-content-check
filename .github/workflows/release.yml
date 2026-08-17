@@ -6,6 +6,10 @@ name: Release
 # the requested ref really is an annotated, signed tag object, and confirms
 # that tag points at a commit already on main.
 #
+# The first job also re-runs the same `make verify` gate CI runs, at the exact
+# commit the tag names, and refuses a tag whose name disagrees with the package
+# version, so nothing unverified can be published under a verified-looking tag.
+#
 # The second job can write but never checks out a working tree, so nothing in
 # the repository at the tagged ref can influence what it does. It re-resolves
 # the tag through the API before publishing, so a tag moved between the two
@@ -48,6 +52,13 @@ jobs:
           git fetch --force origin "refs/tags/${TAG}:refs/tags/${TAG}"
           test "$(git cat-file -t "${TAG}")" = "tag"
 
+      - name: Refuse a signer list that names no principal
+        run: |
+          # Present is not the same as populated. A file of comments would let
+          # verify-tag run against an empty principal list, and the failure
+          # would read like a bad signature rather than a missing key.
+          grep -qv '^[[:space:]]*\(#\|$\)' .github/allowed_signers
+
       - name: Verify the tag signature
         env:
           TAG: ${{ inputs.tag }}
@@ -61,6 +72,27 @@ jobs:
           TAG: ${{ inputs.tag }}
         run: |
           git merge-base --is-ancestor "${TAG}^{commit}" origin/main
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d # v10.0.1
+        with:
+          enable-cache: false
+          python-version: "3.12"
+
+      - name: Run the full gate at the tagged commit
+        env:
+          TAG: ${{ inputs.tag }}
+        run: |
+          git checkout --detach "${TAG}^{commit}"
+          make verify
+
+      - name: Confirm the tag and the package version agree
+        env:
+          TAG: ${{ inputs.tag }}
+        run: |
+          want="${TAG#v}"
+          have="$(uv run python -c 'import tomllib, pathlib; print(tomllib.loads(pathlib.Path("pyproject.toml").read_text())["project"]["version"])')"
+          test "${want}" = "${have}"
 
   publish:
     name: Publish the release

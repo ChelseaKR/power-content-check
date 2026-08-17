@@ -11,8 +11,41 @@ recorded as one.
 
 ## [Unreleased]
 
+Nothing yet.
+
+## [0.1.0] - 2026-08-18
+
+First release. A deterministic conformance checker for California Power Content
+Labels: it reads a published label and reports which prescribed elements it can
+find, which it cannot, and which it is unable to judge. It makes no judgment
+about any supplier's power mix, performance or compliance status, and it is not
+affiliated with the California Energy Commission or any utility. One entry,
+because no earlier tag exists: the first cut and the work recorded against it
+before any tag was cut ship together.
+
 ### Added
 
+- A CLI, `power-content-check`, with two commands: `check` and `catalog`.
+- 30 registered checks against the Power Content Label format, of which 18 are
+  implemented and 12 enforce nothing and report as not evaluated with a written
+  reason. Every one of the 30 carries a citation to a published source that was
+  fetched and read, with the retrieval date.
+- Fail-closed extraction. A document that cannot be read produces a
+  not-evaluated result for every registered check, never a conforming one, and
+  the run cannot exit 0. Covered by `tests/test_fail_closed.py`, which hashes
+  the tool's conclusions for an unreadable input and for a clean one and
+  asserts they differ.
+- An empty denominator is reported as `NOTHING CHECKED` with exit code 3, not
+  as success.
+- `--fingerprint`, a hash of a run's conclusions that excludes file paths,
+  timestamps and the tool version.
+- JSON output carrying the citation for every result.
+- A notice reproduced on every report stating that the tool checks conformance
+  to a published format, makes no judgment about any supplier's power mix,
+  performance or compliance status, does not rank suppliers, and is not
+  affiliated with the California Energy Commission or any utility.
+- `scripts/fetch_examples.py`, which will cache a small number of published
+  labels locally, honouring robots.txt and refusing to fetch in bulk.
 - Every deviation now states the basis on which the tool looked. Extraction
   counts the images a PDF declares, following Form XObjects, and composes one
   sentence from the count: this PDF embeds N images and text inside a picture
@@ -143,46 +176,18 @@ recorded as one.
   regulations, the artwork resolution, the ruleset vintage reasoning, and the
   column arithmetic result.
 
-## [0.1.0] - 2026-08-17
-
-First cut.
-
-### Added
-
-- A CLI, `power-content-check`, with two commands: `check` and `catalog`.
-- 28 registered checks against the Power Content Label format, of which 18 are
-  implemented and 10 enforce nothing and report as not evaluated with a written
-  reason. Every one of the 28 carries a citation to a published source that was
-  fetched and read, with the retrieval date.
-- Fail-closed extraction. A document that cannot be read produces a
-  not-evaluated result for every registered check, never a conforming one, and
-  the run cannot exit 0. Covered by `tests/test_fail_closed.py`, which hashes
-  the tool's conclusions for an unreadable input and for a clean one and
-  asserts they differ.
-- An empty denominator is reported as `NOTHING CHECKED` with exit code 3, not
-  as success.
-- `--fingerprint`, a hash of a run's conclusions that excludes file paths,
-  timestamps and the tool version.
-- JSON output carrying the citation for every result.
-- A notice reproduced on every report stating that the tool checks conformance
-  to a published format, makes no judgment about any supplier's power mix,
-  performance or compliance status, does not rank suppliers, and is not
-  affiliated with the California Energy Commission or any utility.
-- `scripts/fetch_examples.py`, which will cache a small number of published
-  labels locally, honouring robots.txt and refusing to fetch in bulk.
-
 ### Known gaps
 
-- Ten registered checks enforce nothing. They are listed with reasons in
+- Twelve registered checks enforce nothing. They are listed with reasons in
   `power-content-check catalog`.
 - The ruleset is pinned to the regulations effective 2025-06-18. Whether that
   ruleset applies to a label for an earlier data year is a judgment the tool
   does not make; the effective date is printed on every report so the reader
-  can make it. Settled for data year 2024 in the unreleased entry above.
+  can make it. Settled for data year 2024; see `docs/adr/0004`.
 - Two requirements that turn on a 2026 trigger date are registered but not
   enforced, because the published text does not settle whether the trigger
   attaches to a label's publication date or to its data year. Restated more
-  precisely in the unreleased entry above.
+  precisely under PCL023 and PCL024 in Changed above.
 
 [Unreleased]: https://github.com/ChelseaKR/power-content-check/compare/v0.1.0...HEAD
 [0.1.0]: https://github.com/ChelseaKR/power-content-check/releases/tag/v0.1.0
