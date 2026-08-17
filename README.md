@@ -52,7 +52,14 @@ uv run power-content-check catalog
 ```
 
 Accepts `.pdf` and `.txt`. A directory is expanded to the supported files
-inside it.
+inside it, and anything else in that directory is named at the end of the
+report so that you know what was not read.
+
+That last part matters for one file in particular. The Energy Commission
+publishes a spreadsheet beside every label, an alternative rendering of the
+same disclosure. This tool does not read it, deliberately, and
+[docs/adr/0009](docs/adr/0009-the-second-file-is-not-this-tools-subject.md)
+is the argument for that rather than an omission.
 
 The tool is offline. It opens the files you name and nothing else. No network
 call, no telemetry, no account, no configuration file, no cache.
@@ -119,8 +126,8 @@ more.
 `scripts/inspect_artwork.py` prints every image a PDF declares and the size at
 which the page draws it, so you can judge whether a missing element could
 plausibly be inside one. Where any doubt remains, render the page and look at
-it. `docs/sources.md` records that being done for the eight published labels
-this project calibrated against, and what it showed.
+it. `docs/sources.md` records that being done for the first eight published
+labels this project calibrated against, and what it showed.
 
 ### A phrase the extractor broke apart is not a phrase the label lacks
 
@@ -133,9 +140,26 @@ wrap, so the heading beside it arrives in the middle of this one.
 Both produced deviations against published labels that plainly carry the
 element. Prescribed phrases are now matched with the spaces removed on both
 sides, which ignores where the extractor put its spaces without ignoring what
-sits between the words. Where other words are inside the phrase, the tool
-reports not evaluated rather than choosing between "absent" and "wrapped". See
+sits between the words. See
 [docs/adr/0006](docs/adr/0006-a-phrase-the-extractor-broke-apart.md).
+
+### A heading that wrapped is read down its column instead
+
+Refusing to decide the wrapped heading was right and it cost coverage: the
+statewide disclosure check went unevaluated on seven of the twenty four
+published labels read.
+
+So the page is now read column by column before that check gives up. Text is
+grouped into the horizontal spans a reader would see, and two spans are one
+cell when one's horizontal extent contains the other's and they sit close
+enough together to be lines of one cell. That puts a wrapped heading back
+together, and the check is evaluated on all twenty four.
+
+Position is used to decide which cell a word is in, and for nothing else. It is
+consulted only inside the branch that reports not evaluated, so the most it can
+do is turn "the tool cannot tell" into "the tool found it". It cannot produce a
+deviation, and a test holds that. See
+[docs/adr/0008](docs/adr/0008-column-geometry-decides-which-cell.md).
 
 ## Which ruleset, for which year
 
@@ -215,9 +239,12 @@ supplier's figures.
 
 `scripts/fetch_examples.py` will fetch a small number of published labels into
 a local, ignored cache if you want to exercise the tool against real documents.
-It honours robots.txt, rate limits itself, and refuses to fetch in bulk. Eight
-published labels have been read this way, and two of the checks are the way
-they are because of what the eighth showed that the third did not.
+It honours robots.txt, rate limits itself, and refuses to fetch in bulk. Twenty
+four of the ninety one published labels have been read this way, and three of
+the checks are the way they are because of what a wider set showed that a
+narrower one did not. On all twenty four the same two checks, and only those
+two, report a deviation. Which is a fact about the rendering the Energy
+Commission issues, not about twenty four suppliers.
 
 `scripts/inspect_artwork.py` reports the artwork on a PDF page. Neither script
 is part of the package and neither is invoked by the CLI, which is offline.

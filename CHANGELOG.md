@@ -33,6 +33,21 @@ recorded as one.
   passed over in silence, which is the thing `docs/adr/0002` exists to prevent.
   Registered checks go from 28 to 30 and unimplemented from 10 to 12.
   Implemented stays at 18.
+- Column reconstruction, in `geometry.py`. A page is read down its columns as
+  well as across its lines, so a column heading that wraps onto a second line
+  can be put back together. Text is grouped into the horizontal spans a reader
+  would see, and two spans are one cell when one's horizontal extent contains
+  the other's and they sit within `CELL_LINE_SPACING` of each other. Position
+  decides cell membership and nothing else, one check reads the result, and it
+  reads it only inside the branch that reports not evaluated, so nothing
+  reconstructed here can become a deviation. Every failure returns nothing and
+  leaves the caller where it was. See `docs/adr/0008`.
+- The report names the files in a directory that are not a format this tool
+  reads, in the text output and as `skipped` in the JSON. They are in no count,
+  and a directory holding nothing else still reports `NOTHING CHECKED` and
+  exits 3. Dropping them in silence left a reader with no way to know that the
+  Energy Commission publishes a second rendering of each label beside it. See
+  `docs/adr/0009`.
 
 ### Changed
 
@@ -80,6 +95,25 @@ recorded as one.
   `docs/adr/0007`.
 - PCL019, PCL020, PCL022 and PCL029 reasons sharpened after rereading the
   regulation text and the wider label set. None changed class.
+- The calibration set went from eight published 2024 labels to twenty four of
+  the ninety one published, adding a fourth investor owned utility and a
+  multi-state one, five more municipal utilities, three more community choice
+  aggregators, a second electric service provider, a second rural cooperative,
+  two irrigation districts, a transit district and a university system. The two
+  deviations hold on all twenty four. No label read carries a telephone number,
+  none names the Energy Commission in full, and one carries the mixed portfolio
+  footnote of section 1393.1(f).
+- PCL016 is evaluated on all twenty four published labels read. It was
+  unevaluated on seven of them, because the wrapped column heading of
+  `docs/adr/0006` is common rather than rare, and reading the page down its
+  columns recovers the heading on every one. The refusal it added is intact:
+  where the reconstruction does not put a rendering back together either, the
+  check still reports not evaluated and now says which of the two it tried.
+- PCL020, PCL021, PCL025 and PCL029 reasons carry the figures from the wider
+  set. The statewide column that the Energy Commission supplies sums to 101
+  against a displayed total of 100 on all twenty four labels. The fourteen of
+  thirty three per-column count is now scoped explicitly to the eight labels it
+  was measured on, rather than restated across a set where it was not.
 
 ### Documented
 
@@ -87,6 +121,15 @@ recorded as one.
   handles a prescribed phrase that extraction broke apart.
 - `docs/adr/0007`, why position does not decide who a contact detail belongs
   to, and the reread of the other permanent classifications that went with it.
+- `docs/adr/0008`, the one use ADR 0007 left open for position, and the four
+  things that fence it in.
+- `docs/adr/0009`, why the spreadsheet the Energy Commission publishes beside
+  each label is not this tool's subject. Three answers were set out and the
+  narrowest was taken: the tool keeps one document as its subject, does not
+  read the workbook, and never treats two files as one label. Read out to text
+  and checked, each of the four workbooks read produces seven deviations rather
+  than two, five of which are true of a data extract and misleading about a
+  disclosure.
 - `docs/sources.md` lists all eight calibration labels, records that the Energy
   Commission publishes an alternative rendering of each label beside it which
   does name the Energy Commission in full, and records that no label read

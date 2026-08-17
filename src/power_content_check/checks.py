@@ -865,7 +865,7 @@ CHECKS: tuple[RegisteredCheck, ...] = (
         "Whether any customer is served by a mixture of portfolios is a fact about the "
         "supplier's service, not about the document. The tool cannot establish whether "
         "the requirement was triggered, so it will not report either way. Presence is "
-        "visible and absence is not: one of the eight published 2024 labels this "
+        "visible and absence is not: one of the twenty four published 2024 labels this "
         "project read carries the footnote in the words subdivision (f) describes. A "
         "check built on that asymmetry could only ever confirm, never find a deviation, "
         "and would add to the implemented count without adding any ability to find "
@@ -883,13 +883,16 @@ CHECKS: tuple[RegisteredCheck, ...] = (
         "assessed as the way to settle that and does not settle it. Coordinates give "
         "where a string sits; ownership is a different fact, and turning nearness into "
         "ownership means choosing a distance, which is a threshold no published source "
-        "supplies. On the eight published 2024 labels this project read there is no "
-        "telephone number at all, so there is nothing to attribute, and each label "
-        "carries exactly two web addresses whose owner follows from the domain, which "
-        "PCL003 and PCL005 already decide without reading a single coordinate. Where a "
-        "label sets a contact detail down with no owner beside it, the fact is missing "
-        "from the document rather than from the tool, and a proximity rule that guessed "
-        "wrong would attribute a contact detail to a named supplier.",
+        "supplies. On the twenty four published 2024 labels this project read there is "
+        "no telephone number at all, so there is nothing to attribute, and each label "
+        "carries one web address for the Energy Commission and one for the supplier, "
+        "told apart by their domains, which PCL003 and PCL005 already decide without "
+        "reading a single coordinate. Where a label sets a contact detail down with no "
+        "owner beside it, the fact is missing from the document rather than from the "
+        "tool, and a proximity rule that guessed wrong would attribute a contact detail "
+        "to a named supplier. Reading a page down its columns was built for another "
+        "reason after this was settled, and it does not reopen it: a cell tells you "
+        "which column a string is in, not whose string it is.",
         Blocker.PERMANENT,
     ),
     _registered_only(
@@ -945,10 +948,11 @@ CHECKS: tuple[RegisteredCheck, ...] = (
         "load for total power content.",
         "The label displays whole percentages and the published text prescribes no "
         "rounding rule and no tolerance, so a column's components need not add to the "
-        "total the label displays. On the eight published 2024 labels this project "
-        "read, fourteen of the thirty three columns had components summing to 99 or 101 "
-        "against a displayed total of 100, including, on all eight, the statewide "
-        "column the Energy Commission itself supplies under section 1393.1(a)(3). An "
+        "total the label displays. On eight of the published 2024 labels this project "
+        "read, fourteen of their thirty three columns had components summing to 99 or "
+        "101 against a displayed total of 100. The statewide column the Energy "
+        "Commission itself supplies under section 1393.1(a)(3) sums to 101 against a "
+        "displayed 100 on all twenty four labels read, and no supplier computes it. An "
         "equality test would report a deviation for correctly rounded arithmetic, and "
         "any tolerance that suppressed it would be a threshold this tool invented "
         "rather than one a source supplies. Two further hazards sit behind that one: "
@@ -1006,9 +1010,9 @@ CHECKS: tuple[RegisteredCheck, ...] = (
         "this tool wrote, and a supplier who said the same thing differently would draw "
         "a false finding. It becomes checkable on the issued-format basis if the "
         "Energy Commission's own template carries a fixed rendering of the statement. "
-        "Eight published 2024 labels, and four of the alternative renderings published "
-        "beside them, were read for one. None carries any statement of it, so the "
-        "template that would unblock this does not exist in the 2024 vintage.",
+        "Twenty four published 2024 labels, and four of the alternative renderings "
+        "published beside them, were read for one. None carries any statement of it, "
+        "so the template that would unblock this does not exist in the 2024 vintage.",
         Blocker.CONDITIONAL,
     ),
     _registered_only(
