@@ -13,6 +13,21 @@ recorded as one.
 
 ### Added
 
+- Five checks registered by a completeness sweep that read sections 1391
+  through 1394 and PUC 398.4 end to end on 22 August 2026 and diffed every
+  content-shaped obligation against the catalog. All five enforce nothing:
+  PCL031 marketing claim consistency (permanent, needs the advertisement),
+  PCL032 promotional materials inclusion (permanent, distribution is not in
+  the distributed file), PCL033 single label for general customers
+  (permanent, needs the offering list), PCL034 grandfathered emissions
+  exclusion identified (permanent, on PCL020's visible-absence asymmetry),
+  and PCL035 footnote secondary group percentage (conditional, travels with
+  the PCL023 and PCL024 trigger question). Registered checks go from 30 to
+  35; implemented stays at 18.
+- Section 1393.1(a)(3) renames the statewide quantity for 2026 onward,
+  "California's total loss-adjusted load". That phrasing joins the accepted
+  renderings for PCL016, cited from the regulation itself ahead of any label
+  carrying it.
 - The extraction basis now counts painted vector shapes beside declared
   images, so an absence finding states whether artwork of any enumerable kind
   could be hiding the element. A page that declares no image and paints no

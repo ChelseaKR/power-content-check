@@ -56,10 +56,13 @@ check cites, and read the sentence yourself.
 - **What**: the authorising statute.
 - **Publisher**: California Legislative Counsel.
 - **URL**: <https://leginfo.legislature.ca.gov/faces/codes_displaySection.xhtml?lawCode=PUC&sectionNum=398.4>
-- **Retrieved**: 17 August 2026.
+- **Retrieved**: 17 August 2026. Re-read in full on 22 August 2026 for the
+  completeness sweep recorded below.
 - **Yielded**: the chain of authority, and confirmation that the disclosure
   obligation and its October 1 timing are statutory. No check cites it on its
-  own, because the regulation is the more specific and more recent text.
+  own, because the regulation is the more specific and more recent text. The
+  sweep confirmed its disclosure duties mirror the regulation's at lower
+  specificity; see the completeness sweep section.
 
 ## Navigational
 
@@ -285,6 +288,63 @@ Energy Commission supplies it under section 1393.1(a)(3), and no supplier
 computes it. Its twelve components sum to 101 against a displayed total of 100
 on all twenty four labels read. Widening the set strengthened the reason for
 PCL025 rather than weakening it.
+
+## Completeness sweep
+
+A systematic reverse pass was done on 22 August 2026: the operative corpus
+was read end to end and every obligation it addresses to a label's content
+was enumerated, then diffed against the catalog. The corpus:
+
+- Sections 1391 through 1394 of the regulations, fetched from the docket
+  document listed under Primary above (transaction number 264974), read in
+  full.
+- Public Utilities Code section 398.4, fetched from the Legislative Counsel
+  page listed under Primary, read in full.
+
+The diff registered five requirements the catalog had passed over in
+silence, which is the failure docs/adr/0002 exists to prevent:
+
+- **PCL031**, section 1393.1(a)(2): marketing claims about GHG intensity must
+  be consistent with the disclosed figure. Deciding consistency needs the
+  advertisement, so permanent.
+- **PCL032**, section 1393.1(b)(1): the label shall be provided in all
+  product-specific promotional materials. Distribution is not visible in the
+  distributed file, so permanent.
+- **PCL033**, section 1393.1(c) chapeau: general portfolios are disclosed on
+  a single label. Telling one shared label from several per-portfolio labels
+  needs the supplier's offering list, so permanent.
+- **PCL034**, section 1393.1(d)(2): grandfathered firmed-and-shaped emissions
+  shall be identified as excluded on the label. The trigger predates January
+  2019 agreements, which the document does not carry, and presence would be
+  visible while absence would not, so permanent on PCL020's asymmetry.
+- **PCL035**, section 1393.1(l)(3): the bracketed sentence requiring the
+  secondary resource group's percentage in footnote 3. It travels with the
+  2026 trigger questions of PCL023 and PCL024, so conditional alongside them.
+
+The sweep also found one wording change to record rather than register:
+section 1393.1(a)(3) renames the statewide quantity for 2026 onward,
+"California's total loss-adjusted load". That phrasing is now an accepted
+rendering for PCL016, cited from the regulation itself; whether the Energy
+Commission renders labels that way is a question for the data year 2025
+calibration vintage.
+
+Considered and not registered, with the reason each was left out:
+
+- Section 1391.1 and section 1393 impose duties on generators, balancing
+  authorities and retail suppliers' annual resource reports. They are where
+  the second inputs live (PCL022), not obligations about a label.
+- Section 1394 imposes audit and proof-of-service duties on suppliers.
+- Section 1393.1(g) grants new community choice aggregators an exemption
+  from reporting GHG intensity data early; exemptions are not duties a label
+  can violate.
+- Section 1393.1(j) makes extra unbundled REC source information optional
+  and conditional on Energy Commission approval; section 1393.1(k) is a
+  permission. Nothing optional or permitted can deviate.
+- Public Utilities Code section 398.4 mirrors the regulation's disclosure
+  duties in less specific words - its subdivision (b) is the regulation's
+  (b)(1), its (d) the regulation's single-label rule, its (g)(2) and (k)
+  the statewide disclosures already checked. No check cites it alone, as
+  recorded under Primary above.
 
 ## Not consulted
 
