@@ -18,7 +18,17 @@ FORBIDDEN = {
 }
 
 SKIP_NAMES = {"LICENSE", "uv.lock"}
-SKIP_PARTS = {".git", ".venv", "__pycache__", "examples", "htmlcov"}
+SKIP_PARTS = {
+    ".git",
+    ".venv",
+    "__pycache__",
+    ".hypothesis",
+    ".pytest_cache",
+    ".ruff_cache",
+    ".mypy_cache",
+    "examples",
+    "htmlcov",
+}
 
 
 def offending_lines(path: Path) -> list[tuple[int, str, str]]:
