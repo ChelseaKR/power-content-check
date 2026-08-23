@@ -349,3 +349,33 @@ class TestGhgUnits:
         status, finding = self._run(tmp_path, "Greenhouse gas emissions intensity 410")
         assert status is Status.DOES_NOT_CONFORM
         assert "CO2e" in finding
+
+
+class TestWebsiteAddress:
+    def _run(self, tmp_path: Path, body: str) -> tuple[Status, str]:
+        from power_content_check.checks import BY_ID
+
+        path = tmp_path / "synthetic.txt"
+        path.write_text(body + "\n" + ("filler line for length. " * 20))
+        document = extract(path)
+        assert isinstance(document, LabelDocument)
+        run = BY_ID["PCL003"].run
+        assert run is not None
+        result = run(document, CheckContext())
+        return result.status, result.finding
+
+    def test_website_url_conforms(self, tmp_path: Path) -> None:
+        status, _ = self._run(tmp_path, "Visit our site: www.example-utility.com")
+        assert status is Status.CONFORMS
+
+    def test_email_only_does_not_conform(self, tmp_path: Path) -> None:
+        status, finding = self._run(tmp_path, "Contact us at billing@example-utility.com")
+        assert status is Status.DOES_NOT_CONFORM
+        assert "No web address" in finding
+
+    def test_email_and_website_conforms(self, tmp_path: Path) -> None:
+        status, _ = self._run(
+            tmp_path,
+            "Contact: billing@example-utility.com, Website: https://example-utility.com",
+        )
+        assert status is Status.CONFORMS
