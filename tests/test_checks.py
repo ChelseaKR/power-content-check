@@ -341,6 +341,18 @@ class TestDisplayedTotals:
         assert status is Status.CONFORMS
         assert "All 4 displayed column totals are 100 percent" in finding
 
+    def test_deviation_finding_names_the_specific_row_it_came_from(self, tmp_path: Path) -> None:
+        # A deviation must be traceable to which of several total rows
+        # produced it, not just pooled into an unattributed list of numbers.
+        status, finding = self._run(
+            tmp_path,
+            "Total 100% 100%\nTotal 99% 97%",
+        )
+        assert status is Status.DOES_NOT_CONFORM
+        # The finding cites the matched (normalized-lowercase) row text.
+        assert "total 99% 97%" in finding
+        assert "total 100% 100%" not in finding
+
 
 class TestGhgUnits:
     def _run(self, tmp_path: Path, body: str) -> tuple[Status, str]:
