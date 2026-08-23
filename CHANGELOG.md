@@ -11,7 +11,31 @@ recorded as one.
 
 ## [Unreleased]
 
-Nothing yet.
+### Added
+
+- `schema_version` on every JSON report, starting at 1. It versions the shape
+  of the output: within a version keys are append only, and removing,
+  renaming or retyping one is recorded as a breaking change, on the same
+  terms as retiring a check identifier. See `docs/adr/0010`.
+
+### Changed
+
+- The tests now pin the exact key sets of the JSON report, each document
+  entry, each result, the summary and a catalog entry, where they previously
+  pinned only a superset. A change to any of those shapes fails a test here
+  before it fails a consumer's parser.
+- Exit code precedence is pinned by explicit tests, including the shadowing
+  that holds today: because twelve registered checks always report as not
+  evaluated, NOT_EVALUATED beats NONCONFORMANCE on every run over a readable
+  document and exit code 1 is unreachable until a conditional check
+  implements. That is the documented ordinary result; the tests hold it so
+  that implementing a conditional check surfaces deliberately.
+
+### Documented
+
+- `docs/ROADMAP.md`, the expansion roadmap: nine tracks sequenced by the
+  events that unblock them, and the refusals recorded with their reasons.
+- `docs/adr/0010`, why reports carry a schema version and what moves it.
 
 ## [0.1.0] - 2026-08-18
 

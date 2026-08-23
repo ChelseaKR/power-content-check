@@ -55,6 +55,10 @@ Accepts `.pdf` and `.txt`. A directory is expanded to the supported files
 inside it, and anything else in that directory is named at the end of the
 report so that you know what was not read.
 
+The JSON report carries a `schema_version` (currently 1). Within a version,
+keys are append only; removing or changing one is a breaking change and moves
+the version. See [docs/adr/0010](docs/adr/0010-reports-carry-a-schema-version.md).
+
 That last part matters for one file in particular. The Energy Commission
 publishes a spreadsheet beside every label, an alternative rendering of the
 same disclosure. This tool does not read it, deliberately, and

@@ -199,24 +199,27 @@ now, and it makes every future upgrade boring instead of brave.
 
 ## Track F - Interface contracts
 
-**Status: not started. No blocker.**
+**Status: landed.**
 
 The JSON report is consumed by things other than humans the moment anyone
 scripts this tool, so its shape is a public interface and should be treated
 like the check identifiers already are.
 
-1. **Schema versioning.** Add a `schema_version` field to the run report
-   (start it at 1), so a consumer can tell a changed report from a broken
-   one. Document the field in the README next to the exit codes.
-2. **Contract tests.** Pin the exact top-level keys of the JSON report and
-   the catalog output in a test, the way `tests/test_registry.py` pins
-   identifiers. Any key added or removed then fails a test instead of a
-   stranger's script.
-3. **Machine-readable catalog.** `catalog --json`, emitting the same
-   `CheckSpec` dicts the reports carry, so the gap analysis the catalog
-   enables can be scripted without parsing terminal formatting.
-4. **Exit-code contract.** Already documented and tested; extend the tests
-   to cover the precedence combinations explicitly rather than incidentally.
+1. **Schema versioning.** Landed. Every report carries `schema_version`,
+   starting at 1; keys are append only within a version, and the policy is
+   recorded in `docs/adr/0010`.
+2. **Contract tests.** Landed. The exact key sets of the report, each
+   document entry, each result, the summary and a catalog entry are pinned,
+   so a shape change fails a test instead of a stranger's script.
+3. **Machine-readable catalog.** Already present before this track was
+   written down: `catalog --json` emits the same `CheckSpec` dicts the
+   reports carry.
+4. **Exit-code contract.** Landed. The precedence combinations are pinned
+   explicitly, including the shadowing that holds today: because twelve
+   registered checks always report as not evaluated, code 2 beats code 1 on
+   every run over a readable document and exit 1 is unreachable until a
+   conditional check implements. Holding that in tests means implementing a
+   conditional check surfaces deliberately rather than silently.
 
 ## Track G - Distribution
 
@@ -279,9 +282,11 @@ since the tool gains no network behavior from being installable.
    an item is refused, update this file in the same commit as the work or
    the refusal. A stale roadmap misstates the project worse than none.
 2. **Anticipated ADRs**, so their numbers do not get assigned twice:
-   0010 the 2026 trigger derivation (Track A); 0011 schema versioning
-   policy (Track F); 0012 the OCR refusal (Track E3); the second-ruleset
-   ADR when triggered (Track C).
+   0010 is taken (the schema version policy, landed with Track F); 0011 the
+   2026 trigger derivation when Track A lands, unless another decision
+   records first; 0012 the OCR refusal (Track E3); the second-ruleset ADR
+   when triggered (Track C). Numbers go to whichever decision lands, and
+   this list moves in the same commit.
 3. **Auditor-facing documentation**: a short document aimed at someone
    verifying this tool rather than using it - how to reproduce a finding
    by hand, how to audit the catalog against the sources, what the tool
@@ -299,7 +304,7 @@ since the tool gains no network behavior from being installable.
 
 | When | What | Track |
 | --- | --- | --- |
-| Now | Interface contracts, test infrastructure, distribution, completeness sweep | F, H, G, D |
+| Now | Test infrastructure, distribution, completeness sweep | H, G, D |
 | Now | Extraction honesty items that need no external event | E1, E2, E3, E4 |
 | After 2026-10-01, as data year 2025 labels publish | Trigger ADR, then PCL023 and PCL024; new-vintage calibration begins; watch for anything that unblocks PCL029 | A, B |
 | On any regulation amendment | Second-ruleset ADR and registry | C |
