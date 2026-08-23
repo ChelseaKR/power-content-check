@@ -13,6 +13,11 @@ recorded as one.
 
 ### Added
 
+- Multi-page PDFs are now held by fixtures rather than assumed: fuel rows
+  split across a page boundary reach the checks through the ordinary page
+  join, a heading wrapped at a page break still reads in order without
+  geometry, and a reconstructed cell never contains text drawn on two
+  different pages, because cells are facts about the page they came from.
 - `schema_version` on every JSON report, starting at 1. It versions the shape
   of the output: within a version keys are append only, and removing,
   renaming or retyping one is recorded as a breaking change, on the same
@@ -36,6 +41,12 @@ recorded as one.
 - `docs/ROADMAP.md`, the expansion roadmap: nine tracks sequenced by the
   events that unblock them, and the refusals recorded with their reasons.
 - `docs/adr/0010`, why reports carry a schema version and what moves it.
+- `docs/adr/0011`, the refusal of optical character recognition: a document
+  without a text layer fails closed rather than getting guessed at, with the
+  bar any future recognition path would have to clear written down.
+- CONTRIBUTING gains an upgrade policy for pypdf, the only runtime
+  dependency, whose layout machinery `geometry.py` reads from below the
+  public surface.
 
 ## [0.1.0] - 2026-08-18
 

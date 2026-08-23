@@ -160,42 +160,39 @@ what the tool is entitled to say rather than how many things it finds.
 
 ### E1. Multi-page labels
 
-Extraction already joins all pages of a PDF, and `page_count` travels with
-every report. What does not exist is a synthetic multi-page fixture proving
-that checks behave sensibly when a label's rows straddle a page boundary -
-in particular that a wrapped heading reconstruction is attempted per page,
-not across one. Small fixture, one test, closes a question before a real
-two-page label asks it.
+Landed. Extraction joined pages from the start; fixtures now hold what was
+assumed: rows split across a page boundary reach the checks, a wrap whose
+second line falls on the next page reads in order without geometry (which is
+why cross-page reconstruction would be building nothing), and cells never
+span pages.
 
 ### E2. Vector-drawn text
 
-The basis sentence already concedes that text drawn as vector paths is not
-read. What could tighten this: counting the page's path-painting operators
-the way `count_images` counts images, so the sentence can distinguish "this
-page draws almost nothing but text" from "this page carries heavy vector
-artwork". Same discipline as ADR 0003 - the count qualifies what an absence
-finding means, it never decides one. An ADR first; the code is small once
-the claim is settled.
+Not started. The basis sentence already concedes that text drawn as vector
+paths is not read. What could tighten this: counting the page's
+path-painting operators the way `count_images` counts images, so the sentence
+can distinguish "this page draws almost nothing but text" from "this page
+carries heavy vector artwork". Same discipline as ADR 0003 - the count
+qualifies what an absence finding means, it never decides one. An ADR first;
+the code is small once the claim is settled.
 
 ### E3. OCR
 
-Assessed as refused, and worth recording as an ADR rather than leaving it
-to be re-litigated. The short case: OCR output is a model's guess at text,
-which would put a probabilistic layer inside a tool whose value is that it
-contains none, and would attach the tool's name to readings it cannot
-attribute to the document. A scanned label fails closed today, loudly, and
-a human renders the page and looks at it - which is the resolution the
-calibration record itself used. Revisit only if someone produces an OCR
-path whose errors are bounded and attributable, and then as a separately
-labelled extraction mode with its own basis wording, never silently.
+Refused, and recorded: `docs/adr/0011`. The short case: OCR output is a
+model's guess at text, which would put a probabilistic layer inside a tool
+whose value is that it contains none, and its errors land in both dangerous
+directions while looking like honest readings. A scanned label fails closed
+today, loudly, and a human renders the page and looks at it - which is the
+resolution the calibration record itself used. The ADR also writes down the
+bar anything that reopens this would have to clear.
 
 ### E4. pypdf upgrade policy
 
-pypdf is the only runtime dependency and extraction is the safety-critical
-surface. Adopt an explicit policy: upgrades are their own commits, run the
-full gate plus the cached-label fingerprint harness (Track H3) before and
-after, and record the version bump in the changelog. Cheap to write down
-now, and it makes every future upgrade boring instead of brave.
+Landed, in CONTRIBUTING: upgrades are their own commits, one dependency one
+commit, the gate reruns, and the changelog records even a floor move. The
+policy names the specific hazard - `geometry.py` reads pypdf's layout
+machinery from below its public surface, so a bump can silently take column
+reconstruction away, which is safe but quiet, and there is a test for it.
 
 ## Track F - Interface contracts
 
@@ -282,11 +279,11 @@ since the tool gains no network behavior from being installable.
    an item is refused, update this file in the same commit as the work or
    the refusal. A stale roadmap misstates the project worse than none.
 2. **Anticipated ADRs**, so their numbers do not get assigned twice:
-   0010 is taken (the schema version policy, landed with Track F); 0011 the
-   2026 trigger derivation when Track A lands, unless another decision
-   records first; 0012 the OCR refusal (Track E3); the second-ruleset ADR
-   when triggered (Track C). Numbers go to whichever decision lands, and
-   this list moves in the same commit.
+   0010 is taken (the schema version policy, Track F) and 0011 is taken (the
+   OCR refusal, Track E3); 0012 the 2026 trigger derivation when Track A
+   lands, unless another decision records first; the second-ruleset ADR when
+   triggered (Track C). Numbers go to whichever decision lands, and this
+   list moves in the same commit.
 3. **Auditor-facing documentation**: a short document aimed at someone
    verifying this tool rather than using it - how to reproduce a finding
    by hand, how to audit the catalog against the sources, what the tool
