@@ -552,17 +552,25 @@ def _pcl017(doc: LabelDocument, ctx: CheckContext) -> CheckResult:
 
 
 def _pcl018(doc: LabelDocument, ctx: CheckContext) -> CheckResult:
+    all_values: list[float] = []
+    all_off: list[float] = []
+    found_any = False
     for line in doc.normalized_lines:
         match = _TOTAL_ROW.match(_row_label(line))
         if not match:
             continue
+        found_any = True
         values = [float(v.rstrip("% ").strip()) for v in re.findall(_PERCENT, match.group(1))]
+        all_values.extend(values)
         off = [v for v in values if v != 100.0]
         if off:
+            all_off.extend(off)
+    if found_any:
+        if all_off:
             return _bad(
                 doc,
                 "PCL018",
-                f"A displayed column total is not 100 percent: {off}.",
+                f"A displayed column total is not 100 percent: {all_off}.",
                 "Section 1392(b)(1) expresses the fuel mix as percentages of the "
                 "portfolio's retail sales, and the labels the Energy Commission "
                 "issues display a total row of 100 percent for every column. This "
@@ -571,7 +579,7 @@ def _pcl018(doc: LabelDocument, ctx: CheckContext) -> CheckResult:
             )
         return _ok(
             "PCL018",
-            f"All {len(values)} displayed column totals are 100 percent.",
+            f"All {len(all_values)} displayed column totals are 100 percent.",
         )
     return _unknown(
         "PCL018",
