@@ -42,6 +42,9 @@ recorded as one.
 
 ### Changed
 
+- Python 3.14 joins the tested and declared set: the CI matrix runs the gate
+  on 3.12, 3.13 and 3.14, and the classifiers say so. The locked dependency
+  set needed no change.
 - The coverage floor moves from 90 percent to 96, where the suite now measures
   97.2. The floor is configured in `pyproject.toml` and stated in
   CONTRIBUTING; it moves only when what it excludes has been argued with.

@@ -234,11 +234,16 @@ since the tool gains no network behavior from being installable.
 2. **Build provenance attestation** on the published artifacts.
 3. **A `--version` flag**, which a packaged CLI needs and a git checkout
    never did.
-4. **Python 3.14 support**: extend the CI matrix and classifiers once the
-   locked dependencies confirm clean on it. `requires-python` is already
-   `>=3.12`, so this is confirmation work, not compatibility work.
+4. **Python 3.14 support.** Landed: the full gate passes on 3.14 with the
+   locked dependency set unchanged, so the CI matrix and the classifiers
+   now declare it.
 5. Keep the README's install section honest in both worlds: uv-from-git
    remains the auditable path, PyPI the convenient one.
+
+What remains in this track is the one step this project cannot do from
+inside the repository: registering the project on PyPI and configuring its
+trusted publisher, which is an owner action on pypi.org. The workflow job
+that publishes behind the existing release gate follows that, not before.
 
 ## Track H - Test infrastructure
 
