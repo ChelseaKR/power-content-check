@@ -552,25 +552,30 @@ def _pcl017(doc: LabelDocument, ctx: CheckContext) -> CheckResult:
 
 
 def _pcl018(doc: LabelDocument, ctx: CheckContext) -> CheckResult:
-    all_values: list[float] = []
-    all_off: list[float] = []
-    found_any = False
+    # Each matched line is kept as its own row, not pooled into one flat
+    # list: a finding must be able to say which row a deviation came from.
+    # Two total rows with identical text both count (see
+    # test_multiple_conforming_total_rows_conforms): a repeated line is not
+    # assumed to be a duplicate-extraction artifact of the same row, since a
+    # label can genuinely carry more than one identically-formatted total.
+    rows: list[tuple[str, list[float]]] = []
     for line in doc.normalized_lines:
         match = _TOTAL_ROW.match(_row_label(line))
         if not match:
             continue
-        found_any = True
+        row_text = match.group(0)
         values = [float(v.rstrip("% ").strip()) for v in re.findall(_PERCENT, match.group(1))]
-        all_values.extend(values)
-        off = [v for v in values if v != 100.0]
-        if off:
-            all_off.extend(off)
-    if found_any:
-        if all_off:
+        rows.append((row_text, values))
+    if rows:
+        deviations = [(row, v) for row, values in rows for v in values if v != 100.0]
+        if deviations:
+            cited = "; ".join(f"{row!r} has {v}" for row, v in deviations)
             return _bad(
                 doc,
                 "PCL018",
-                f"A displayed column total is not 100 percent: {all_off}.",
+                f"A displayed column total is not 100 percent, in {len(deviations)} of "
+                f"{sum(len(values) for _, values in rows)} displayed column total(s) found "
+                f"across {len(rows)} total row(s): {cited}.",
                 "Section 1392(b)(1) expresses the fuel mix as percentages of the "
                 "portfolio's retail sales, and the labels the Energy Commission "
                 "issues display a total row of 100 percent for every column. This "
@@ -579,7 +584,10 @@ def _pcl018(doc: LabelDocument, ctx: CheckContext) -> CheckResult:
             )
         return _ok(
             "PCL018",
-            f"All {len(all_values)} displayed column totals are 100 percent.",
+            f"All {sum(len(values) for _, values in rows)} displayed column totals are "
+            f"100 percent, across {len(rows)} total row(s)."
+            if len(rows) > 1
+            else f"All {len(rows[0][1])} displayed column totals are 100 percent.",
         )
     return _unknown(
         "PCL018",
@@ -832,8 +840,9 @@ CHECKS: tuple[RegisteredCheck, ...] = (
         "Displayed column totals",
         "section 1393.1(i)",
         "The format of the power content label may not be altered by the retail supplier.",
-        "If a total row is present, every percentage on it is 100. If no total row is "
-        "found the check is not evaluated, because this tool does not recompute a mix.",
+        "If any total row is present, every percentage on every total row found is 100. "
+        "A deviation names the specific row it came from. If no total row is found the "
+        "check is not evaluated, because this tool does not recompute a mix.",
         _pcl018,
         basis=Basis.TEMPLATE_FORMAT,
         issued=True,

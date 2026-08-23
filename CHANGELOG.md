@@ -61,6 +61,14 @@ recorded as one.
   renaming or retyping one is recorded as a breaking change, on the same
   terms as retiring a check identifier. See `docs/adr/0010`.
 
+### Fixed
+
+- PCL018 (displayed column totals) pooled every matching total row's values
+  into one undifferentiated list, so a deviation could no longer be traced
+  to the specific row that produced it once more than one total row was
+  present. Each row is now checked and cited on its own; a deviation names
+  the exact row text it came from.
+
 ### Changed
 
 - The calibration set went from twenty four published 2024 labels to thirty
