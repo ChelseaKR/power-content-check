@@ -84,11 +84,10 @@ permits every path used above. `efiling.energy.ca.gov` serves no robots.txt.
 
 ## Calibration
 
-Twenty four published 2024 labels have been fetched once, read locally, and
+Thirty four published 2024 labels have been fetched once, read locally, and
 used to confirm that the checks fire correctly on real documents rather than
-only on the synthetic fixtures. They are not committed to this repository. The
-index page lists ninety one labels, so this is a little over a quarter of the
-published set.
+only on the synthetic fixtures. They are not committed to this repository.
+The index page lists ninety one labels.
 
 Three were read first:
 
@@ -131,6 +130,33 @@ two irrigation districts, a transit district, and a university system.
 - <https://www.energy.ca.gov/filebrowser/download/9430>
 - <https://www.energy.ca.gov/filebrowser/download/9432>
 - <https://www.energy.ca.gov/filebrowser/download/9435>
+
+Ten more were added on 22 August 2026, in two capped invocations of
+`scripts/fetch_examples.py`, chosen from the index page for type diversity
+the set did not yet have: a small city municipal utility, a large community
+choice aggregator, a second electric service provider from a different
+parent, a small mountain public utility district, a bi-state rural
+cooperative, a second irrigation district, a third community choice
+aggregator, a port district, a second very small rural cooperative, and a
+mid-sized municipal utility.
+
+- <https://www.energy.ca.gov/filebrowser/download/9110> (City of Moreno Valley)
+- <https://www.energy.ca.gov/filebrowser/download/9125> (CleanPowerSF)
+- <https://www.energy.ca.gov/filebrowser/download/9127> (Constellation NewEnergy)
+- <https://www.energy.ca.gov/filebrowser/download/9134> (Kirkwood Meadows PUD)
+- <https://www.energy.ca.gov/filebrowser/download/9176> (Valley Electric Association)
+- <https://www.energy.ca.gov/filebrowser/download/9137> (Lathrop Irrigation District)
+- <https://www.energy.ca.gov/filebrowser/download/9144> (Orange County Power Authority)
+- <https://www.energy.ca.gov/filebrowser/download/9169> (Stockton Port District)
+- <https://www.energy.ca.gov/filebrowser/download/9170> (Surprise Valley Electrification Corp.)
+- <https://www.energy.ca.gov/filebrowser/download/9346> (City of Roseville)
+
+The standing result holds on all ten: readable, both known deviations and no
+others, nothing unevaluated except the twelve registered checks and PCL001
+without a supplier name, and PCL016 evaluated. Artwork enumeration and
+placement were done for each (steps 1 and 2); rendering was not, because the
+pattern closed on the first eight held - every image drawn at 46 by 46 points
+or smaller, in the Electricity Sources band.
 
 On all twenty four, the same two checks and only those two report a deviation:
 no telephone number appears, and the words "Energy Commission" do not appear.
@@ -230,8 +256,8 @@ showed it, and both causes were fixed. See `docs/adr/0006`.
 ### The wrapped heading, and reading a page down its columns
 
 Refusing to decide cost coverage, and widening the set showed how much. The
-wrap is common: PCL016 went unevaluated on seven of the twenty four labels, a
-little under a third.
+wrap is common: PCL016 went unevaluated on seven of the twenty four labels,
+a little under a third.
 
 The page is now read column by column before the check gives up. Text runs are
 grouped into the horizontal spans a reader would see, and two spans are one

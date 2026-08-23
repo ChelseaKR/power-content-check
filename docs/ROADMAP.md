@@ -60,7 +60,8 @@ a document that does not exist yet.
 
 ## Track B - Widen the calibration set to the full published set
 
-**Status: ongoing, no blocker.**
+**Status: ongoing, no blocker. Thirty four of ninety one read as of
+22 August 2026.**
 
 Twenty four of the ninety one published 2024 labels have been read. Each
 widening so far paid for itself: the set going from three to eight exposed
