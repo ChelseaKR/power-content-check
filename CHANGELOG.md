@@ -63,6 +63,16 @@ recorded as one.
 
 ### Changed
 
+- The calibration set went from twenty four published 2024 labels to thirty
+  four, in two capped fetch invocations, chosen for supplier types the set
+  lacked: a small city municipal utility, a large and a third community
+  choice aggregator, a second electric service provider, a small mountain
+  district, a bi-state rural cooperative, a second irrigation district, a
+  port district, a very small rural cooperative, and a mid-sized municipal
+  utility. The standing result holds on all ten: the same two deviations,
+  nothing unevaluated beyond the registered checks, PCL016 evaluated
+  everywhere, and every image drawn at forty six points or smaller. Recorded
+  with URLs in `docs/sources.md`.
 - Python 3.14 joins the tested and declared set: the CI matrix runs the gate
   on 3.12, 3.13 and 3.14, and the classifiers say so. The locked dependency
   set needed no change.
