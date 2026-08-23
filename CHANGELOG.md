@@ -13,6 +13,23 @@ recorded as one.
 
 ### Added
 
+- Property tests over generated inputs, holding the ADRs' prose invariants
+  mechanically: normalisation folds only its declared character classes and
+  is idempotent; space-insensitive matching finds a phrase under any spacing
+  extraction invents and never under an inserted word; cell reconstruction
+  loses and duplicates nothing, and every segment survives whole inside the
+  cell that took it.
+- Hostile-input tests: seeded, deterministic mutations of valid label PDFs -
+  truncations, bit flips, spliced junk - asserting that no mutation crashes
+  extraction or yields a result set that does not account for every
+  registered check. The fail-closed guarantee now holds against damaged
+  inputs as well as crafted ones.
+- `scripts/check_regressions.py`, for contributors with a local fetch cache:
+  records each cached label's fingerprint into an uncommitted baseline beside
+  the cache, then proves on demand that the current tree concludes about
+  every cached document exactly what the recorded tree did. Fingerprints
+  exclude paths, timestamps, versions and digests by design, so this compares
+  conclusions rather than bytes.
 - Multi-page PDFs are now held by fixtures rather than assumed: fuel rows
   split across a page boundary reach the checks through the ordinary page
   join, a heading wrapped at a page break still reads in order without
@@ -25,6 +42,12 @@ recorded as one.
 
 ### Changed
 
+- The coverage floor moves from 90 percent to 96, where the suite now measures
+  97.2. The floor is configured in `pyproject.toml` and stated in
+  CONTRIBUTING; it moves only when what it excludes has been argued with.
+- `hypothesis` joins the dev dependency group for the property tests. It is a
+  test-only dependency; the package's runtime dependency set is unchanged at
+  one.
 - The tests now pin the exact key sets of the JSON report, each document
   entry, each result, the summary and a catalog entry, where they previously
   pinned only a superset. A change to any of those shapes fails a test here

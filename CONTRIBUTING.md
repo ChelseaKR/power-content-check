@@ -82,8 +82,9 @@ not about the document" is.
 ## Style
 
 - Format and lint with ruff. Type check with mypy in strict mode.
-- Coverage floor is 90 percent and the complexity ceiling is 10. Both are
-  configured in `pyproject.toml`.
+- Coverage floor is 96 percent and the complexity ceiling is 10. Both are
+  configured in `pyproject.toml`. The floor moves only when what it excludes
+  has been argued with; raising it is a deliberate diff, not housekeeping.
 - Comments explain why, not what.
 
 ## Upgrading pypdf

@@ -242,34 +242,25 @@ since the tool gains no network behavior from being installable.
 
 ## Track H - Test infrastructure
 
-**Status: not started. No blocker.**
+**Status: landed, with one number still moving.**
 
-1. **Raise the coverage floor.** It stands at 90 percent. The modules where
-   the remaining slack lives are the ones that decide what the tool can
-   see. Raise to 95, then examine what is excluded before raising again;
-   the point is that the number moves only when the exclusions have been
-   argued with, not for the number.
-2. **Property tests for the invariants the ADRs assert.** Two in particular
-   are stated in prose and enforced nowhere mechanically:
-   - Geometry can turn "cannot tell" into "found it" and can never produce
-     a deviation (ADR 0008). A hypothesis test over generated span layouts
-     holds for arbitrary inputs, not just hand-built ones.
-   - Space-insensitive matching ignores where the extractor put spaces and
-     never what sits between words. Property: `contains_ignoring_spaces`
-     is true exactly when the words appear in order, for generated word
-     sequences and generated space insertions.
-3. **A cached-label regression harness.** A script, not part of the
-   package, that runs the checker over whatever the local fetch cache
-   holds and compares the `--fingerprint` output per document against a
-   locally recorded expectation file. New contributors without the cache
-   never notice it; anyone with the cache catches, before pushing, any
-   change that alters a conclusion about a real label. Fingerprints
-   exclude paths, timestamps and version by design, which is what makes
-   them usable here.
-4. **Malformed-PDF fuzzing**, light: generate truncated and mutated PDFs,
-   assert only that every run exits 2 or 3 and never 0. The fail-closed
-   property is currently proven on crafted inputs; this proves it on
-   hostile ones.
+1. **Raise the coverage floor.** Landed at 96, where the suite measures a
+   little over 97. The floor moves only when what it excludes has been
+   argued with; the next raise is deliberate work, not housekeeping.
+2. **Property tests for the invariants the ADRs assert.** Landed over
+   generated inputs: normalisation is idempotent and folds only its declared
+   classes; space-insensitive matching finds a phrase under any spacing and
+   never under an inserted word; cell reconstruction loses and duplicates
+   nothing, so no grouping it produces can carry a claim about absence.
+3. **A cached-label regression harness.** Landed as
+   `scripts/check_regressions.py`: records fingerprints per cached document
+   into an uncommitted baseline beside the cache, then proves the current
+   tree concludes exactly what the recorded tree did. A contributor without
+   the cache never notices it; with the cache, any change that moves a
+   conclusion about a real label surfaces before pushing.
+4. **Malformed-PDF fuzzing.** Landed: seeded deterministic mutations of
+   valid label PDFs, asserting no mutation crashes extraction or yields a
+   result set that does not account for every registered check.
 
 ## Track I - Documentation and community
 
@@ -301,7 +292,7 @@ since the tool gains no network behavior from being installable.
 
 | When | What | Track |
 | --- | --- | --- |
-| Now | Test infrastructure, distribution, completeness sweep | H, G, D |
+| Now | Distribution, completeness sweep, vector-drawn text counting | G, D, E2 |
 | Now | Extraction honesty items that need no external event | E1, E2, E3, E4 |
 | After 2026-10-01, as data year 2025 labels publish | Trigger ADR, then PCL023 and PCL024; new-vintage calibration begins; watch for anything that unblocks PCL029 | A, B |
 | On any regulation amendment | Second-ruleset ADR and registry | C |

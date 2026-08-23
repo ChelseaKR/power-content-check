@@ -41,6 +41,7 @@ dev = [
   "mypy>=1.18",
   "bandit>=1.8",
   "pip-audit>=2.7",
+  "hypothesis>=6",
 ]
 
 # --------------------------------------------------------------------------
@@ -55,7 +56,7 @@ addopts = [
   "--strict-config",
   "--cov=power_content_check",
   "--cov-report=term-missing",
-  "--cov-fail-under=90",
+  "--cov-fail-under=96",
 ]
 
 [tool.coverage.run]
@@ -63,7 +64,7 @@ branch = true
 source = ["src/power_content_check"]
 
 [tool.coverage.report]
-fail_under = 90
+fail_under = 96
 show_missing = true
 exclude_lines = [
   "pragma: no cover",
@@ -98,7 +99,7 @@ ignore = [
 max-complexity = 10
 
 [tool.ruff.lint.per-file-ignores]
-"tests/*" = ["S101", "S603", "S607"]
+"tests/*" = ["S101", "S311", "S603", "S607"]
 "scripts/*" = ["S310"]
 
 # --------------------------------------------------------------------------
