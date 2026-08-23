@@ -52,6 +52,10 @@ _DOMAIN = re.compile(
 )
 _TOTAL_ROW = re.compile(rf"^total\s+((?:{_PERCENT}\s*)+)$")
 _YEAR_TITLE = re.compile(r"\b((?:19|20)\d{2})\s+power content label\b")
+_UNSPECIFIED_ANNOTATION = re.compile(
+    r"unspecified power\s*[:(]?\s*primarily\s+([a-z ]+?)"
+    r"(?:\s*\)|(?=\s*\d)|(?=\s*%)|(?=[.,;:]|$))"
+)
 
 
 def _row_label(line: str) -> str:
@@ -392,7 +396,7 @@ def _pcl011(doc: LabelDocument, ctx: CheckContext) -> CheckResult:
 
 
 def _pcl012(doc: LabelDocument, ctx: CheckContext) -> CheckResult:
-    match = re.search(r"unspecified power\s*\(?\s*primarily\s+([a-z ]+?)\s*\)", doc.normalized)
+    match = _UNSPECIFIED_ANNOTATION.search(doc.normalized)
     if match:
         group = match.group(1).strip()
         if group in GROUP_NAMES:

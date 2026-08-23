@@ -283,6 +283,14 @@ class TestUnspecifiedPowerAnnotation:
         status, _ = self._run(tmp_path, "Unspecified Power (primarily fossil fuels) 22%")
         assert status is Status.CONFORMS
 
+    def test_unparenthesized_annotation_conforms(self, tmp_path: Path) -> None:
+        status, _ = self._run(tmp_path, "Unspecified Power - primarily fossil fuels 31% 0% 22%")
+        assert status is Status.CONFORMS
+
+    def test_colon_annotation_conforms(self, tmp_path: Path) -> None:
+        status, _ = self._run(tmp_path, "Unspecified Power: primarily fossil fuels 22%")
+        assert status is Status.CONFORMS
+
     def test_renewables_annotation_conforms(self, tmp_path: Path) -> None:
         status, _ = self._run(
             tmp_path,
@@ -290,10 +298,22 @@ class TestUnspecifiedPowerAnnotation:
         )
         assert status is Status.CONFORMS
 
+    def test_unparenthesized_renewables_annotation_conforms(self, tmp_path: Path) -> None:
+        status, _ = self._run(
+            tmp_path,
+            "Unspecified Power - primarily renewables and zero-carbon resources 22%",
+        )
+        assert status is Status.CONFORMS
+
     def test_an_invented_group_name_does_not_conform(self, tmp_path: Path) -> None:
         status, finding = self._run(tmp_path, "Unspecified Power (primarily hydrogen) 22%")
         assert status is Status.DOES_NOT_CONFORM
         assert "hydrogen" in finding
+
+    def test_an_invented_group_name_without_parens_does_not_conform(self, tmp_path: Path) -> None:
+        status, finding = self._run(tmp_path, "Unspecified Power - primarily nuclear 22%")
+        assert status is Status.DOES_NOT_CONFORM
+        assert "nuclear" in finding
 
 
 class TestDisplayedTotals:
