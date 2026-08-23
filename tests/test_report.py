@@ -7,7 +7,7 @@ from pathlib import Path
 
 from power_content_check.checks import CheckContext
 from power_content_check.engine import check_paths
-from power_content_check.model import ExitCode
+from power_content_check.model import SCHEMA_VERSION, ExitCode
 from power_content_check.report import render_catalog, render_json, render_text
 
 SUPPLIER = "Example Municipal Utility District"
@@ -41,23 +41,50 @@ class TestJson:
         payload = json.loads(
             render_json(check_paths([conforming_label], CheckContext(supplier_name=SUPPLIER)))
         )
-        assert set(payload) >= {
+        assert set(payload) == {
+            "schema_version",
             "tool",
             "tool_version",
             "ruleset_id",
             "ruleset_effective",
             "generated_at",
             "notice",
+            "skipped",
             "summary",
             "exit_code",
             "documents",
         }
+        assert payload["schema_version"] == SCHEMA_VERSION
         document = payload["documents"][0]
+        assert set(document) == {
+            "path",
+            "readability",
+            "unreadable_reason",
+            "sha256",
+            "page_count",
+            "image_count",
+            "extraction_basis",
+            "counts",
+            "results",
+        }
         assert document["readability"] == "readable"
         assert document["sha256"]
         assert set(document["counts"]) == {"conforms", "does_not_conform", "not_evaluated"}
+        assert set(payload["summary"]) == {
+            "documents_checked",
+            "documents_readable",
+            "documents_unreadable",
+            "conforms",
+            "does_not_conform",
+            "not_evaluated",
+        }
         assert "image_count" in document
         assert document["extraction_basis"]
+
+    def test_a_result_carries_exactly_its_documented_keys(self, conforming_label: Path) -> None:
+        payload = json.loads(render_json(check_paths([conforming_label])))
+        result = payload["documents"][0]["results"][0]
+        assert set(result) == {"check_id", "status", "finding", "detail"}
 
     def test_unreadable_document_json(self, image_only_pdf: Path) -> None:
         payload = json.loads(render_json(check_paths([image_only_pdf])))
@@ -192,3 +219,28 @@ class TestCatalogRendering:
         payload = json.loads(render_catalog(as_json=True))
         assert len(payload) == len(CHECKS)
         assert {e["id"] for e in payload} == {c.spec.id for c in CHECKS}
+
+    def test_a_catalog_entry_carries_exactly_its_documented_keys(self) -> None:
+        """The catalog is consumed by scripts too. Its shape is pinned like the
+        run report's, so a change to CheckSpec's rendering fails a test rather
+        than a stranger's parser."""
+        payload = json.loads(render_catalog(as_json=True))
+        assert set(payload[0]) == {
+            "id",
+            "title",
+            "basis",
+            "implemented",
+            "what_it_looks_for",
+            "unimplemented_reason",
+            "blocker",
+            "citation",
+        }
+        assert set(payload[0]["citation"]) == {
+            "source_key",
+            "source_title",
+            "source_url",
+            "source_effective",
+            "source_retrieved",
+            "locator",
+            "quote",
+        }

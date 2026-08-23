@@ -216,6 +216,15 @@ class DocumentReport:
         }
 
 
+#: Version of the JSON report's shape, not of the tool and not of the
+#: ruleset. Within one version every key is append only; removing a key,
+#: renaming one, or changing what a key holds is a breaking change and moves
+#: this number. See docs/adr/0010. Pinned by tests/test_report.py, which
+#: asserts the exact key sets, so a shape change fails here before it fails
+#: for a consumer.
+SCHEMA_VERSION = 1
+
+
 class ExitCode:
     """Process exit codes.
 
@@ -285,6 +294,7 @@ class RunReport:
 
     def to_dict(self) -> dict[str, Any]:
         return {
+            "schema_version": SCHEMA_VERSION,
             "tool": self.tool,
             "tool_version": self.tool_version,
             "ruleset_id": self.ruleset_id,

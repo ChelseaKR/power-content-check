@@ -44,6 +44,35 @@ class TestExitCodes:
         assert excinfo.value.code == 2
 
 
+class TestPrecedence:
+    """Higher codes win. These pin the combinations callers actually hit.
+
+    With the catalog as registered, a readable document always carries the
+    twelve checks that enforce nothing, so NOT_EVALUATED shadows
+    NONCONFORMANCE on every run over a readable document and code 1 is
+    unreachable until a conditional check implements. That is the documented
+    ordinary result, not a defect; these tests hold the shadowing on purpose,
+    so that implementing a conditional check surfaces here first.
+    """
+
+    def test_nothing_checked_beats_everything(
+        self, empty_directory: Path, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        assert main(["check", str(empty_directory)]) == ExitCode.NOTHING_CHECKED
+
+    def test_not_evaluated_beats_nonconformance(
+        self, deficient_label: Path, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        """The same run found deviations AND could not evaluate checks, and
+        reports the louder of the two."""
+        assert main(["check", "--json", str(deficient_label)]) == ExitCode.NOT_EVALUATED
+        payload = json.loads(capsys.readouterr().out)
+        counts = payload["documents"][0]["counts"]
+        assert counts["does_not_conform"] > 0, "this test needs a run with both"
+        assert counts["not_evaluated"] > 0
+        assert payload["exit_code"] == ExitCode.NOT_EVALUATED
+
+
 class TestOutput:
     def test_json_is_valid_and_carries_the_notice(
         self, conforming_label: Path, capsys: pytest.CaptureFixture[str]
