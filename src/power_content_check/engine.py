@@ -126,6 +126,7 @@ def check_document(
         page_count=outcome.page_count,
         results=run_checks(outcome, ctx, registry),
         image_count=outcome.image_count,
+        vector_shape_count=outcome.vector_shape_count,
         extraction_basis=outcome.extraction_basis,
     )
 

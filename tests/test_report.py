@@ -63,6 +63,7 @@ class TestJson:
             "sha256",
             "page_count",
             "image_count",
+            "vector_shape_count",
             "extraction_basis",
             "counts",
             "results",
@@ -118,7 +119,10 @@ class TestText:
 
     def test_the_document_header_states_what_was_looked_at(self, illustrated_pdf: Path) -> None:
         out = _flat(render_text(check_paths([illustrated_pdf])))
-        assert "Basis: the text layer of this PDF, which also embeds 5 images." in out
+        assert (
+            "Basis: the text layer of this PDF, which also embeds 5 images and "
+            "paints no vector shape." in out
+        )
 
 
 class TestFilesThatWereNotRead:

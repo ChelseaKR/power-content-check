@@ -13,6 +13,12 @@ recorded as one.
 
 ### Added
 
+- The extraction basis now counts painted vector shapes beside declared
+  images, so an absence finding states whether artwork of any enumerable kind
+  could be hiding the element. A page that declares no image and paints no
+  shape is the strongest position an absence can be reported from, and the
+  sentence says so. No check reads either count; a test reads the catalog's
+  source to hold that. See `docs/adr/0012`.
 - Property tests over generated inputs, holding the ADRs' prose invariants
   mechanically: normalisation folds only its declared character classes and
   is idempotent; space-insensitive matching finds a phrase under any spacing
@@ -70,6 +76,8 @@ recorded as one.
 - `docs/adr/0011`, the refusal of optical character recognition: a document
   without a text layer fails closed rather than getting guessed at, with the
   bar any future recognition path would have to clear written down.
+- `docs/adr/0012`, why the basis sentence counts what the page paints, and
+  why no threshold converts that count into a judgment.
 - CONTRIBUTING gains an upgrade policy for pypdf, the only runtime
   dependency, whose layout machinery `geometry.py` reads from below the
   public surface.
