@@ -7,6 +7,7 @@ label and they do not carry any real supplier's figures.
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from pathlib import Path
 
 import pypdf
@@ -250,4 +251,51 @@ def unsupported_file(tmp_path: Path) -> Path:
 def empty_directory(tmp_path: Path) -> Path:
     path = tmp_path / "no_labels_here"
     path.mkdir()
+    return path
+
+
+def synthetic_multipage_pdf(
+    path: Path,
+    pages: Sequence[tuple[tuple[str, ...], Placed]],
+) -> Path:
+    """A PDF of several pages, each carrying chosen lines and placed spans.
+
+    Pages share one font and nothing else. Geometry is reconstructed per page
+    by construction, because ``document_cells`` walks the page list and never
+    sees two pages at once; the point of this fixture is to hold that visible
+    rather than assumed, and to prove that text split across a page boundary
+    still reaches the checks through the ordinary line join.
+    """
+    count = len(pages)
+    font_number = 3 + 2 * count
+
+    def drawing(lines: tuple[str, ...], placed: Placed) -> bytes:
+        ops = ["BT /F1 11 Tf"]
+        for index, line in enumerate(lines):
+            ops.append(f"1 0 0 1 40 {740 - index * 18} Tm ({line}) Tj")
+        for x, y, text in placed:
+            ops.append(f"1 0 0 1 {x} {y} Tm ({text}) Tj")
+        ops.append("ET")
+        return _stream("", "\n".join(ops).encode("ascii"))
+
+    page_objects = [
+        (
+            f"<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] "
+            f"/Contents {3 + count + k} 0 R /Resources << /Font << /F1 {font_number} 0 R >> "
+            f">> >>"
+        ).encode("ascii")
+        for k in range(count)
+    ]
+    content_objects = [drawing(lines, placed) for lines, placed in pages]
+    objects = [
+        b"<< /Type /Catalog /Pages 2 0 R >>",
+        (
+            f"<< /Type /Pages /Kids [{' '.join(f'{3 + k} 0 R' for k in range(count))}] "
+            f"/Count {count} >>"
+        ).encode("ascii"),
+        *page_objects,
+        *content_objects,
+        b"<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>",
+    ]
+    path.write_bytes(_pdf(objects))
     return path

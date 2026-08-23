@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import pytest
+
 from power_content_check.extract import (
     SUPPORTED_SUFFIXES,
     LabelDocument,
@@ -189,7 +191,125 @@ class TestUnreadable:
         assert isinstance(extract(weird), UnreadableDocument)
 
 
-class TestDiscover:
+class TestMultipage:
+    """A label may be spread over more than one page.
+
+    Nothing in the regulation says a label is one page, and PCL019's reason
+    records that the tool declines to equate "one place" with one page.
+    Extraction already joins every page before normalisation, so text split
+    across a page boundary reaches the checks; what these tests hold is that
+    it does, and that geometry stays a fact about one page at a time.
+    """
+
+    @pytest.fixture
+    def straddling_pdf(self, tmp_path: Path) -> Path:
+        """Two pages: the fuel rows split across the boundary."""
+        from conftest import synthetic_multipage_pdf
+
+        return synthetic_multipage_pdf(
+            tmp_path / "straddling.pdf",
+            pages=[
+                (
+                    (
+                        "2024 POWER CONTENT LABEL",
+                        "Example Municipal Utility District",
+                        "Greenhouse Gas Emissions Intensity in lbs of CO2e per megawatt hour: 410",
+                        "Renewables and Zero-Carbon Resources",
+                        "RPS Eligible Renewables 40%",
+                        "Solar 20%  Wind 12%  Geothermal 5%",
+                        "Biomass and Biogas 2%  Eligible Hydroelectric 1%",
+                    ),
+                    (),
+                ),
+                (
+                    (
+                        "Large Hydroelectric 8%  Nuclear 9%",
+                        "Fossil Fuels  Natural Gas 30%  Coal and Petroleum 3%",
+                        "Unspecified Power (primarily fossil fuels) 10%",
+                        "Total 100%",
+                    ),
+                    (),
+                ),
+            ],
+        )
+
+    def test_both_pages_are_seen(self, straddling_pdf: Path) -> None:
+        result = extract(straddling_pdf)
+        assert isinstance(result, LabelDocument)
+        assert result.page_count == 2
+
+    def test_rows_split_across_the_boundary_reach_the_checks(self, straddling_pdf: Path) -> None:
+        """PCL006 needs all ten categories, which no single page carries."""
+        from power_content_check.checks import CHECKS, CheckContext
+        from power_content_check.engine import run_checks
+        from power_content_check.model import Status
+
+        result = extract(straddling_pdf)
+        assert isinstance(result, LabelDocument)
+        by_id = {r.check_id: r for r in run_checks(result, CheckContext())}
+        assert by_id["PCL006"].status is Status.CONFORMS
+        assert len(by_id) == len(CHECKS)
+
+    def test_a_heading_wrapped_across_pages_still_reads_in_order(self, tmp_path: Path) -> None:
+        """Each page is extracted whole, so a wrap whose second line falls on
+        the next page arrives in reading order through the ordinary line join
+        and needs no geometry at all. This is why cross-page reconstruction
+        would be building nothing."""
+        from conftest import Placed, synthetic_multipage_pdf
+
+        page_one: tuple[tuple[str, ...], Placed] = (
+            ("2024 POWER CONTENT LABEL", "Example Municipal Utility District"),
+            ((200.0, 700.0, "CA Utility"),),
+        )
+        page_two: tuple[tuple[str, ...], Placed] = (
+            (
+                "Average Rate Table",
+                "Greenhouse Gas Emissions Intensity in lbs of CO2e per megawatt hour: 410",
+                "Fossil Fuels  Natural Gas 30%  Coal and Petroleum 3%",
+                "Unspecified Power (primarily fossil fuels) 10%",
+                "Total 100%",
+            ),
+            ((200.0, 700.0, "Average"),),
+        )
+        path = synthetic_multipage_pdf(tmp_path / "wrapped_break.pdf", pages=[page_one, page_two])
+        result = extract(path)
+        assert isinstance(result, LabelDocument)
+        assert "ca utility average" in result.normalized
+
+    def test_geometry_never_joins_two_pages(self, tmp_path: Path) -> None:
+        """Cells are facts about the page they came from. The word drawn alone
+        on page two shares an extent with the wide line on page one by
+        construction of this fixture's layout, and must not land in the same
+        cell anyway."""
+        from conftest import Placed, synthetic_multipage_pdf
+
+        page_one: tuple[tuple[str, ...], Placed] = (
+            (
+                "Wide line spanning alpha beta",
+                "Greenhouse Gas Emissions Intensity in lbs of CO2e per megawatt hour: 410",
+                "Fossil Fuels  Natural Gas 30%  Coal and Petroleum 3%",
+                "Unspecified Power (primarily fossil fuels) 10%",
+            ),
+            (),
+        )
+        page_two: tuple[tuple[str, ...], Placed] = (
+            (
+                "alpha",
+                "Renewables and Zero-Carbon Resources",
+                "RPS Eligible Renewables 40%",
+                "Solar 20%  Wind 12%  Geothermal 5%",
+                "Total 100%",
+            ),
+            ((200.0, 700.0, "alpha"),),
+        )
+        path = synthetic_multipage_pdf(tmp_path / "two_page_cells.pdf", pages=[page_one, page_two])
+        result = extract(path)
+        assert isinstance(result, LabelDocument)
+        assert result.cells is not None
+        wide = [cell for cell in result.cells if "wide line spanning" in cell]
+        assert wide, "the wide line should reconstruct into some cell"
+        assert all(cell.count("alpha") == 1 for cell in wide)
+
     def test_a_directory_expands_to_supported_files(self, tmp_path: Path) -> None:
         (tmp_path / "a.txt").write_text("x")
         (tmp_path / "b.pdf").write_bytes(b"x")

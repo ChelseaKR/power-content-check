@@ -86,6 +86,25 @@ not about the document" is.
   configured in `pyproject.toml`.
 - Comments explain why, not what.
 
+## Upgrading pypdf
+
+pypdf is the only runtime dependency and extraction is the safety-critical
+surface, so its upgrades get their own commit and are never folded into work
+that touches checks.
+
+1. Bump the floor in `pyproject.toml` and relock. One dependency, one commit,
+   a message that names the version.
+2. Run `make verify`. The gate covers the fail-closed properties, but note
+   what it cannot cover: `geometry.py` reads pypdf's layout machinery from
+   below its public surface precisely because the surface folds lines (see
+   ADR 0008), so a version bump can take column reconstruction away. That
+   failure mode is safe - PCL016 goes back to not evaluated - but it is also
+   silent, which is why a test asserts positioned text still yields on a real
+   PDF. If that test fails, stop: either pin the previous version or fix
+   forward, never delete the test.
+3. Record the bump in the changelog under Changed, even though it is only a
+   floor move. Consumers of the lockfile are entitled to know it moved.
+
 ## Commits and pull requests
 
 Describe the change by what it does. Keep the changelog's Unreleased section
