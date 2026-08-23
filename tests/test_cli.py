@@ -150,7 +150,7 @@ class TestCatalog:
     def test_catalog_json_carries_citations(self, capsys: pytest.CaptureFixture[str]) -> None:
         main(["catalog", "--json"])
         payload = json.loads(capsys.readouterr().out)
-        assert len(payload) == 30
+        assert len(payload) == 35
         for entry in payload:
             assert entry["citation"]["source_url"].startswith("https://")
             assert entry["citation"]["quote"]

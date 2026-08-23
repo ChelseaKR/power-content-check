@@ -130,7 +130,10 @@ GROUP_NAMES = ("fossil fuels", "renewables and zero carbon resources")
 #: section 1393.1(a) and named "total California loss-adjusted load" in section
 #: 1393.1(c)(1). The Energy Commission's issued labels render it as
 #: "CA Utility Average", so both the regulation's wording and the issued
-#: wording are accepted.
+#: wording are accepted. Section 1393.1(a)(3) renames the quantity for labels
+#: from 2026 on ("California's total loss-adjusted load"), so the
+#: regulation's own 2026 phrasing is accepted too, ahead of any label that
+#: carries it.
 STATEWIDE_RENDERINGS = (
     "total california loss adjusted load",
     "california loss adjusted load",
@@ -138,6 +141,7 @@ STATEWIDE_RENDERINGS = (
     "california system electricity",
     "ca utility average",
     "california utility average",
+    "california's total loss adjusted load",
 )
 
 
@@ -1033,6 +1037,97 @@ CHECKS: tuple[RegisteredCheck, ...] = (
         "applicable'. Registered separately from PCL007 and PCL009 so that the third "
         "group in the same list is visible rather than silently skipped.",
         Blocker.PERMANENT,
+    ),
+    # -----------------------------------------------------------------------
+    # Registered by the completeness sweep of 22 August 2026, which read
+    # sections 1391 through 1394 end to end and diffed every obligation
+    # against the catalog. Five requirements had been passed over in
+    # silence, which is the failure docs/adr/0002 exists to prevent. The
+    # sweep's method and its negative results are recorded in docs/sources.md.
+    # -----------------------------------------------------------------------
+    _registered_only(
+        "PCL031",
+        "Marketing claim consistency",
+        "section 1393.1(a)(2)",
+        "Any marketing or retail product claim by a retail supplier related to the GHG "
+        "emissions intensity of an electricity portfolio shall be consistent with the GHG "
+        "emissions intensity disclosed on the relevant power content label.",
+        "Consistency runs between a marketing claim and the label, so deciding it needs "
+        "the second document: the promotional material in which the claim was made. This "
+        "tool reads the label it is handed and nothing else, and it will not go looking "
+        "for a supplier's advertising. Whether some claim somewhere agrees with the "
+        "disclosed figure is a fact about two documents together, and the label alone "
+        "cannot exhibit a deviation from either side of the comparison.",
+        Blocker.PERMANENT,
+    ),
+    _registered_only(
+        "PCL032",
+        "Promotional materials inclusion",
+        "section 1393.1(b)(1)",
+        "The power content label shall be provided in all product-specific written "
+        "promotional materials that are distributed to consumers by either printed or "
+        "electronic means, including the retail supplier's Internet Web site, if one "
+        "exists, except that advertisements and notices in general circulation media shall "
+        "not be subject to this requirement.",
+        "Whether the label reached consumers inside product-specific promotional "
+        "materials is a fact about distribution, not about the document: a file cannot "
+        "show where else it was sent or published. The placement rules inside those "
+        "materials are PCL019 and the timing rules are PCL027; what subdivision (b)(1) "
+        "adds is the duty to include the label at all, and no reading of the file itself "
+        "can settle that it was included anywhere.",
+        Blocker.PERMANENT,
+    ),
+    _registered_only(
+        "PCL033",
+        "Single label for general customers",
+        "section 1393.1(c)",
+        "Each retail supplier shall disclose the following information for every "
+        "electricity portfolio it offers, except for custom electricity portfolios, on a "
+        "single power content label.",
+        "That the general portfolios share one label turns on how many electricity "
+        "portfolios the supplier offers, which the label does not say. A supplier with "
+        "three portfolios might issue one conforming label covering all three, or three "
+        "labels each conforming alone, and telling those cases apart from a custom "
+        "portfolio arrangement under subdivision (e) needs the supplier's offering list, "
+        "which is not part of any document this tool reads.",
+        Blocker.PERMANENT,
+    ),
+    _registered_only(
+        "PCL034",
+        "Grandfathered emissions exclusion identified",
+        "section 1393.1(d)(2)",
+        "Retail suppliers with specified purchases of eligible firmed-and-shaped products "
+        "under a purchase agreement or ownership arrangement executed prior to January 1, "
+        "2019 shall report GHG emissions associated with the delivered electricity and "
+        "shall identify these emissions as excluded from the calculation of emissions "
+        "intensities on the power content label.",
+        "The duty to identify these emissions as excluded attaches only to suppliers "
+        "whose purchase agreements predate January 1, 2019, and whether one does is not "
+        "discoverable from the label. Presence would be visible and absence would not: "
+        "one of the twenty four published labels read carries exclusion wording without "
+        "any way to tell grandfathering from subdivision (d)(3) adjustments. A check "
+        "built here could confirm and never deviate, adding to the implemented count "
+        "without adding any ability to find anything, on the same asymmetry recorded "
+        "against PCL020.",
+        Blocker.PERMANENT,
+    ),
+    _registered_only(
+        "PCL035",
+        "Footnote secondary group percentage",
+        "section 1393.1(l)(3)",
+        "Unspecified power is electricity purchased from a genericized pool on the open "
+        "market. [This footnote shall also provide the percentage of the secondary "
+        "resource group, as specified under Section 1393.1(c)(2)(A)-(B), serving "
+        "unspecified power in the previous year].",
+        "The bracketed sentence appended to footnote 3 requires the percentage of the "
+        "secondary resource group serving unspecified power. It travels with the 2026 "
+        "annotation changes of subdivisions (c)(2) and (c)(7), blocked on the same "
+        "unsettled question of whether the trigger attaches to disclosure date or data "
+        "year, and unblocked by the same event: labels for data year 2025 or later "
+        "showing how the Energy Commission renders the requirement. Becomes checkable "
+        "when a published rendering supplies the words to match, on the ADR planned for "
+        "the Track A trigger derivation.",
+        Blocker.CONDITIONAL,
     ),
 )
 

@@ -122,34 +122,23 @@ otherwise.
 
 ## Track D - A completeness sweep of the source corpus
 
-**Status: not started. No blocker.**
+**Status: landed, 22 August 2026.**
 
-Thirty requirements are registered, drawn mostly from section 1393.1. What
-has never been done systematically is the reverse pass: read the whole
-operative corpus end to end and enumerate every requirement, so that the
-catalog's completeness is demonstrated rather than accumulated.
+Sections 1391 through 1394 and PUC 398.4 were read end to end and every
+obligation addressed to a label's content was diffed against the catalog.
+Five requirements had been passed over in silence and are now registered:
+PCL031 marketing claim consistency, PCL032 promotional materials inclusion,
+PCL033 single label for general customers, PCL034 grandfathered emissions
+exclusion identified (all permanent), and PCL035 footnote secondary group
+percentage (conditional, on the Track A trigger question). The method, the
+items considered and left unregistered with reasons, and the one wording
+change recorded rather than registered are in the completeness sweep section
+of `docs/sources.md`. Registered checks went from 30 to 35; implemented is
+unchanged at 18.
 
-Scope: sections 1391 through 1394 of the regulations, plus Public Utilities
-Code section 398.4, which is cited today only through the chain of
-authority and never on its own.
-
-Method:
-
-1. Enumerate every obligation the corpus addresses to the content of a
-   label, distinguishing them from obligations addressed to supplier
-   conduct (timing, posting, reporting), which this tool cannot see.
-2. Diff that enumeration against the thirty registered identifiers.
-3. Register anything content-shaped that is missing, as PCL031 onward,
-   with the usual citation and a permanent-or-conditional declaration.
-4. Where the sweep finds nothing missing, say so in `docs/sources.md`
-   with the date of the reread, so the next reader knows the negative
-   result was looked for rather than assumed. Absence is easier to miss
-   than presence, which is the same reason the *Not consulted* section of
-   `docs/sources.md` exists.
-
-One candidate worth attention during the sweep: whether anything in
-PUC 398.4 describes label content in terms the regulation does not, since
-a statutory basis would be a third value for `Basis` if one exists.
+The sweep is repeatable: it runs again whenever the regulations amend, and
+its record updates in `docs/sources.md` with the date of the reread either
+way.
 
 ## Track E - Extraction honesty
 
@@ -297,7 +286,7 @@ that publishes behind the existing release gate follows that, not before.
 
 | When | What | Track |
 | --- | --- | --- |
-| Now | Distribution, completeness sweep | G, D |
+| Now | Distribution (owner action pending) | G |
 | Now | Extraction honesty items that need no external event | E1, E2, E3, E4 |
 | After 2026-10-01, as data year 2025 labels publish | Trigger ADR, then PCL023 and PCL024; new-vintage calibration begins; watch for anything that unblocks PCL029 | A, B |
 | On any regulation amendment | Second-ruleset ADR and registry | C |

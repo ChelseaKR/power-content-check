@@ -82,7 +82,7 @@ Higher codes win. A run that both checked nothing and found a deviation reports
 the louder of the two, never the quieter.
 
 Note that exit code 2 is the ordinary result for a well formed label, because
-twelve registered checks enforce nothing and always report as not evaluated.
+seventeen registered checks enforce nothing and always report as not evaluated.
 That is deliberate. See below.
 
 ## Two rules this tool is built around
@@ -204,7 +204,7 @@ the RPS-eligible subcategory, the emissions intensity units, retired unbundled
 RECs, the unspecified power annotation, the three prescribed footnotes, the
 separate statewide disclosure, the data year, and the displayed column totals.
 
-### 12 checks are registered and enforce nothing
+### 17 checks are registered and enforce nothing
 
 They appear in every report as not evaluated, with a written reason. They are
 in the catalog rather than absent from it because a requirement this tool does
@@ -212,7 +212,7 @@ not measure should be visible, not implied by silence.
 
 Each one also says whether the gap can ever close:
 
-- **permanent**, for nine of them. No version of this tool that reads the
+- **permanent**, for thirteen of them. No version of this tool that reads the
   document it is handed can decide the requirement, because the fact it turns
   on is not in the document, or because deciding it would mean inventing a rule
   no published source supplies. Needing the supplier's annual resource report
@@ -221,9 +221,10 @@ Each one also says whether the gap can ever close:
   percentages that were rounded, against a total the label displays, with no
   rounding rule or tolerance in the published text to compare against. So is
   saying which of two contact details belongs to whom, on a document that does
-  not say.
+  not say. So is deciding a marketing claim's consistency, which needs the
+  advertisement the claim was made in.
 
-- **conditional**, for three of them, where the reason names what would unblock
+- **conditional**, for four of them, where the reason names what would unblock
   it: a document that does not exist yet.
 
 Run `uv run power-content-check catalog` for the full list with reasons, and

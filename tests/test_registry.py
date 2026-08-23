@@ -54,6 +54,11 @@ EXPECTED_IDS = (
     "PCL028",
     "PCL029",
     "PCL030",
+    "PCL031",
+    "PCL032",
+    "PCL033",
+    "PCL034",
+    "PCL035",
 )
 
 #: Frozen alongside the identifiers. A check may have its wording improved, but
@@ -89,6 +94,11 @@ EXPECTED_TITLES = {
     "PCL028": "Custom electricity portfolios",
     "PCL029": "Retail sales and loss-adjusted load statement",
     "PCL030": "Emerging Technologies group",
+    "PCL031": "Marketing claim consistency",
+    "PCL032": "Promotional materials inclusion",
+    "PCL033": "Single label for general customers",
+    "PCL034": "Grandfathered emissions exclusion identified",
+    "PCL035": "Footnote secondary group percentage",
 }
 
 #: Pinned deliberately. A check here is one that no version of this tool,
@@ -106,6 +116,10 @@ PERMANENTLY_UNIMPLEMENTABLE = {
     "PCL027",
     "PCL028",
     "PCL030",
+    "PCL031",
+    "PCL032",
+    "PCL033",
+    "PCL034",
 }
 
 
@@ -187,7 +201,7 @@ def test_template_basis_cites_the_issued_format() -> None:
 def test_the_split_between_implemented_and_registered_is_visible() -> None:
     assert len(implemented_checks()) + len(unimplemented_checks()) == len(CHECKS)
     assert len(implemented_checks()) == 18
-    assert len(unimplemented_checks()) == 12
+    assert len(unimplemented_checks()) == 17
 
 
 def test_fuel_type_lists_match_the_regulation() -> None:
