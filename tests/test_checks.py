@@ -322,6 +322,25 @@ class TestDisplayedTotals:
         status, _ = self._run(tmp_path, "Total 100.0% 100.0%")
         assert status is Status.CONFORMS
 
+    def test_multiple_total_rows_flags_deviation_in_later_row(self, tmp_path: Path) -> None:
+        body = (
+            "Total 100% 100% 100%\n"
+            "Retail sales covered by retired unbundled RECs 4% 0%\n"
+            "Total 99% 97%"
+        )
+        status, finding = self._run(tmp_path, body)
+        assert status is Status.DOES_NOT_CONFORM
+        assert "99" in finding
+        assert "97" in finding
+
+    def test_multiple_conforming_total_rows_conforms(self, tmp_path: Path) -> None:
+        status, finding = self._run(
+            tmp_path,
+            "Total 100% 100%\nTotal 100% 100%",
+        )
+        assert status is Status.CONFORMS
+        assert "All 4 displayed column totals are 100 percent" in finding
+
 
 class TestGhgUnits:
     def _run(self, tmp_path: Path, body: str) -> tuple[Status, str]:
