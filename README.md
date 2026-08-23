@@ -118,14 +118,16 @@ is appended to every deviation, so a finding quoted on its own still carries
 it:
 
 ```
-Basis: the text layer of this PDF, which also embeds 7 images. Text that is
-drawn inside a picture is not read.
+Basis: the text layer of this PDF, which also embeds 7 images and paints 2
+vector shapes. Text that is drawn inside a picture or as a vector outline is
+not read.
 ```
 
-For a PDF with no images at all, the sentence says so, which is a stronger
-position to report an absence from. It still notes that text drawn as vector
-paths would not be read either, because the count measures images and nothing
-more.
+The sentence carries two counts: the images a page declares and the vector
+shapes it paints. For a PDF with neither, the sentence says so plainly,
+which is the strongest position an absence can be reported from: a picture is
+not an available explanation. Where either count cannot be taken, it says
+that instead of printing zero.
 
 `scripts/inspect_artwork.py` prints every image a PDF declares and the size at
 which the page draws it, so you can judge whether a missing element could

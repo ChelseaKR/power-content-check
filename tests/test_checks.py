@@ -135,7 +135,7 @@ class TestEveryDeviationSaysWhatWasLookedAt:
     def test_a_deviation_on_an_unillustrated_pdf_says_so(self, text_layer_pdf: Path) -> None:
         details = self._details(text_layer_pdf)
         assert details
-        assert all("embeds no image" in detail for detail in details)
+        assert all("declares no image and paints no vector shape" in detail for detail in details)
 
     def test_the_finding_itself_claims_only_the_extracted_text(self, deficient_label: Path) -> None:
         assert "extracted text" in _finding(deficient_label, "PCL002")

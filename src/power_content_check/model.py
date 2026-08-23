@@ -183,6 +183,10 @@ class DocumentReport:
     #: input is plain text. Not a regulatory quantity; it qualifies what an
     #: absence finding is entitled to mean.
     image_count: int | None = None
+    #: Times the document paints a vector path, or None when unknown or the
+    #: input is plain text. The companion to ``image_count``: what the page
+    #: declares beside what the page does. No check reads either. See ADR 0012.
+    vector_shape_count: int | None = None
     #: The sentence describing what the tool was able to look at. Reproduced on
     #: the report and appended to every deviation.
     extraction_basis: str | None = None
@@ -210,6 +214,7 @@ class DocumentReport:
             "sha256": self.sha256,
             "page_count": self.page_count,
             "image_count": self.image_count,
+            "vector_shape_count": self.vector_shape_count,
             "extraction_basis": self.extraction_basis,
             "counts": self.counts,
             "results": [r.to_dict() for r in self.results],

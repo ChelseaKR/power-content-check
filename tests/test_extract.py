@@ -54,20 +54,20 @@ class TestArtworkVersusText:
     def test_a_pdf_with_no_artwork_reports_none(self, text_layer_pdf: Path) -> None:
         document = self._read(text_layer_pdf)
         assert document.image_count == 0
-        assert "embeds no image" in document.extraction_basis
-
-    def test_a_zero_count_still_admits_vector_drawn_text(self, text_layer_pdf: Path) -> None:
-        """A count of zero narrows the explanations. It does not close them."""
-        assert "vector paths" in self._read(text_layer_pdf).extraction_basis
+        assert document.vector_shape_count == 0
+        assert "declares no image and paints no vector shape" in document.extraction_basis
+        assert "A picture is not an available explanation" in document.extraction_basis
 
     def test_artwork_is_counted_including_inside_a_form(self, illustrated_pdf: Path) -> None:
         document = self._read(illustrated_pdf)
         assert document.image_count == 5
-        assert "embeds 5 images" in document.extraction_basis
+        assert document.vector_shape_count == 0
+        assert "embeds 5 images and paints no vector shape" in document.extraction_basis
 
     def test_a_text_input_says_it_is_a_text_input(self, conforming_label: Path) -> None:
         document = self._read(conforming_label)
         assert document.image_count is None
+        assert document.vector_shape_count is None
         assert "plain text file" in document.extraction_basis
 
     def test_an_uncountable_document_does_not_claim_a_count(self) -> None:
@@ -79,6 +79,171 @@ class TestArtworkVersusText:
                 raise RuntimeError("boom")
 
         assert count_images([Exploding()]) is None
+
+    def test_painted_shapes_are_counted(self, tmp_path: Path) -> None:
+        from conftest import synthetic_label_pdf
+
+        path = synthetic_label_pdf(tmp_path / "painted.pdf", paints=3)
+        document = self._read(path)
+        assert document.vector_shape_count == 3
+        assert "declares no image and paints 3 vector shapes" in document.extraction_basis
+
+    def test_images_and_shapes_share_one_sentence(self, tmp_path: Path) -> None:
+        from conftest import synthetic_label_pdf
+
+        path = synthetic_label_pdf(tmp_path / "both.pdf", images=2, paints=1)
+        document = self._read(path)
+        assert (
+            "embeds 2 images and paints 1 vector shape. Text that is drawn "
+            "inside a picture or as a vector outline is not read."
+        ) in document.extraction_basis
+
+    def test_a_single_paint_is_not_pluralised(self, tmp_path: Path) -> None:
+        from conftest import synthetic_label_pdf
+
+        path = synthetic_label_pdf(tmp_path / "one_shape.pdf", paints=1)
+        assert "paints 1 vector shape." in self._read(path).extraction_basis
+
+    def test_paints_inside_a_form_are_counted(self, tmp_path: Path) -> None:
+        from conftest import synthetic_label_pdf
+
+        path = synthetic_label_pdf(tmp_path / "form_shapes.pdf", nested_images=1, nested_paints=2)
+        document = self._read(path)
+        assert document.vector_shape_count == 2
+        assert "paints 2 vector shapes" in document.extraction_basis
+
+    def test_an_unpaintable_page_says_so_instead_of_zeroing(self) -> None:
+        """An enumeration failure must never print as a count of zero."""
+        from power_content_check.extract import _pdf_basis
+
+        assert "could not be enumerated" in _pdf_basis(0, None).lower() and _pdf_basis(
+            0, None
+        ).startswith("Basis: the text layer")
+
+    def test_counting_survives_a_hostile_content_stream(self, text_layer_pdf: Path) -> None:
+        class ExplodingStream(dict):  # type: ignore[type-arg]
+            def get_object(self) -> object:
+                raise RuntimeError("boom")
+
+        page = {"/Contents": ExplodingStream()}
+        from power_content_check.extract import count_vector_paints
+
+        assert count_vector_paints([page]) is None
+
+
+class TestVectorPaintCountingEdges:
+    """The same hostile paths the image counter survives, its sibling must too."""
+
+    def _painted_stream(self) -> tuple[object, object]:
+        from pypdf.generic import DecodedStreamObject, DictionaryObject, NameObject
+
+        stream = DecodedStreamObject()
+        stream.set_data(b"q 0 0 10 10 re f Q\n/Fm0 Do\n")
+        resources = DictionaryObject()
+        xobjects = DictionaryObject()
+        form = DecodedStreamObject()
+        form.set_data(b"q Q\n0 0 5 5 re f\n")
+        form[NameObject("/Subtype")] = NameObject("/Form")
+        xobjects[NameObject("/Fm0")] = form
+        resources[NameObject("/XObject")] = xobjects
+        stream[NameObject("/Resources")] = resources
+        return stream, resources
+
+    def test_a_form_is_descended_into_and_its_paints_counted(self) -> None:
+        from power_content_check.extract import _paints_in
+
+        stream, resources = self._painted_stream()
+        assert _paints_in(stream, resources, None, set(), 0) == 2
+
+    def test_the_depth_cap_returns_zero_rather_than_descending(
+        self,
+    ) -> None:
+        from power_content_check.extract import MAX_FORM_DEPTH, _paints_in
+
+        stream, resources = self._painted_stream()
+        assert _paints_in(stream, resources, None, set(), MAX_FORM_DEPTH + 1) == 0
+
+    def test_an_unparsable_stream_is_none_not_zero(self) -> None:
+        """None means unknown; zero would be an undercount claiming certainty."""
+        from power_content_check.extract import _paints_in
+
+        assert _paints_in("not a stream", None, None, set(), 0) is None
+
+    def test_a_shared_form_is_counted_once(self) -> None:
+        """Two Do operations naming one form paint its contents once."""
+        from pypdf.generic import DecodedStreamObject, NameObject
+
+        from power_content_check.extract import _paints_in
+
+        class Ref:
+            idnum = 42
+            generation = 0
+
+            def __init__(self, target: object) -> None:
+                self._target = target
+
+            def get_object(self) -> object:
+                return self._target
+
+        form = DecodedStreamObject()
+        form.set_data(b"0 0 5 5 re f\n")
+        form[NameObject("/Subtype")] = NameObject("/Form")
+        ref = Ref(form)
+
+        page_stream = DecodedStreamObject()
+        page_stream.set_data(b"/Fm0 Do\n/Fm0 Do\n")
+
+        class Node(dict):  # type: ignore[type-arg]
+            def get_object(self) -> Node:
+                return self
+
+        resources = Node({"/XObject": Node({"/Fm0": ref})})
+
+        assert _paints_in(page_stream, resources, None, set(), 0) == 1
+
+    def test_a_page_with_no_contents_contributes_nothing(self) -> None:
+        from power_content_check.extract import count_vector_paints
+
+        class Page(dict):  # type: ignore[type-arg]
+            pdf = None
+
+        assert count_vector_paints([Page({"/Contents": None})]) == 0
+
+    def test_one_bad_page_poisons_the_whole_count(self) -> None:
+        """A partial count printed as a total would understate the artwork."""
+        from power_content_check.extract import count_vector_paints
+
+        class Page(dict):  # type: ignore[type-arg]
+            pdf = None
+
+        good, resources = TestVectorPaintCountingEdges()._painted_stream()
+
+        class Good(Page):
+            pass
+
+        good_page = Good({"/Contents": good, "/Resources": resources})
+        bad_page = Page({"/Contents": "junk"})
+        assert count_vector_paints([good_page, bad_page]) is None
+
+
+class TestThePaintCountQualifiesAndNeverDecides:
+    """ADR 0012's first fence, read off the source like its geometry sibling.
+
+    The shape count exists so an absence finding can say what the page was
+    carrying. The moment a check reads it, a description of artwork becomes a
+    test about contents, which is the conversion this project refuses.
+    """
+
+    def test_no_check_reads_the_shape_count(self) -> None:
+        import ast
+
+        source = (
+            Path(__file__).resolve().parent.parent / "src" / "power_content_check" / "checks.py"
+        ).read_text(encoding="utf-8")
+        assert "vector_shape_count" not in source
+        tree = ast.parse(source)
+        attrs = {node.attr for node in ast.walk(tree) if isinstance(node, ast.Attribute)}
+        assert "vector_shape_count" not in attrs
 
 
 class _Node(dict[str, object]):

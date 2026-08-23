@@ -168,13 +168,13 @@ span pages.
 
 ### E2. Vector-drawn text
 
-Not started. The basis sentence already concedes that text drawn as vector
-paths is not read. What could tighten this: counting the page's
-path-painting operators the way `count_images` counts images, so the sentence
-can distinguish "this page draws almost nothing but text" from "this page
-carries heavy vector artwork". Same discipline as ADR 0003 - the count
-qualifies what an absence finding means, it never decides one. An ADR first;
-the code is small once the claim is settled.
+Landed. The basis sentence now carries two counts: images declared and
+shapes painted, forms descended with the same depth cap and cycle guard as
+the image count, and an enumeration failure printed as unknown rather than
+as zero. `docs/adr/0012` records the decision and its fences: the count
+qualifies what an absence means, no check reads it, and there is no
+threshold anywhere in the path, because a threshold would convert a
+description into a judgment.
 
 ### E3. OCR
 
@@ -275,11 +275,11 @@ that publishes behind the existing release gate follows that, not before.
    an item is refused, update this file in the same commit as the work or
    the refusal. A stale roadmap misstates the project worse than none.
 2. **Anticipated ADRs**, so their numbers do not get assigned twice:
-   0010 is taken (the schema version policy, Track F) and 0011 is taken (the
-   OCR refusal, Track E3); 0012 the 2026 trigger derivation when Track A
-   lands, unless another decision records first; the second-ruleset ADR when
-   triggered (Track C). Numbers go to whichever decision lands, and this
-   list moves in the same commit.
+   0010 (schema version, Track F), 0011 (OCR refusal, Track E3) and 0012
+   (painted shapes, Track E2) are taken; the 2026 trigger derivation takes
+   0013 when Track A lands, unless another decision records first; the
+   second-ruleset ADR when triggered (Track C). Numbers go to whichever
+   decision lands, and this list moves in the same commit.
 3. **Auditor-facing documentation**: a short document aimed at someone
    verifying this tool rather than using it - how to reproduce a finding
    by hand, how to audit the catalog against the sources, what the tool
@@ -297,7 +297,7 @@ that publishes behind the existing release gate follows that, not before.
 
 | When | What | Track |
 | --- | --- | --- |
-| Now | Distribution, completeness sweep, vector-drawn text counting | G, D, E2 |
+| Now | Distribution, completeness sweep | G, D |
 | Now | Extraction honesty items that need no external event | E1, E2, E3, E4 |
 | After 2026-10-01, as data year 2025 labels publish | Trigger ADR, then PCL023 and PCL024; new-vintage calibration begins; watch for anything that unblocks PCL029 | A, B |
 | On any regulation amendment | Second-ruleset ADR and registry | C |

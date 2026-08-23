@@ -58,20 +58,133 @@ IMAGES_UNCOUNTABLE_BASIS = (
     "enumerated, so text that is present only as a picture cannot be ruled out."
 )
 
+#: Operators that paint a path. Each occurrence is one thing drawn: a filled
+#: wedge, a stroked rule, a shape. Construction operators (``m``, ``l``, ``re``
+#: and kin) are not counted, because constructing without painting draws
+#: nothing. See ADR 0012.
+_PATH_PAINT_OPERATORS = frozenset({b"f", b"F", b"f*", b"S", b"s", b"B", b"B*", b"b", b"b*"})
 
-def _pdf_basis(image_count: int) -> str:
+
+def _paint_clause(paint_count: int | None) -> str:
+    if paint_count is None:
+        return "though its painted shapes could not be enumerated"
+    if paint_count == 0:
+        return "and paints no vector shape"
+    noun = "shape" if paint_count == 1 else "shapes"
+    return f"and paints {paint_count} vector {noun}"
+
+
+def _pdf_basis(image_count: int, paint_count: int | None) -> str:
+    noun = "image" if image_count == 1 else "images"
+    shapes = _paint_clause(paint_count)
+    if image_count == 0 and paint_count == 0:
+        return (
+            "Basis: the text layer of this PDF, which declares no image and "
+            "paints no vector shape. A picture is not an available explanation "
+            "for text this tool did not find."
+        )
     if image_count == 0:
         return (
-            "Basis: the text layer of this PDF, which embeds no image. An "
-            "unreadable picture is therefore not an explanation for text this "
-            "tool did not find, though text drawn as vector paths would still "
-            "not be read."
+            "Basis: the text layer of this PDF, which declares no image "
+            f"{shapes}. Text that is drawn as a filled or stroked outline is "
+            "not read."
         )
-    noun = "image" if image_count == 1 else "images"
     return (
         f"Basis: the text layer of this PDF, which also embeds {image_count} "
-        f"{noun}. Text that is drawn inside a picture is not read."
+        f"{noun} {shapes}. Text that is drawn inside a picture or as a vector "
+        "outline is not read."
     )
+
+
+def _resolve_form(
+    operands: Any,
+    resources: Any,
+) -> tuple[Any, Any, tuple[int, int] | None] | None:
+    """The stream and resources behind a ``Do`` of a Form XObject, or None.
+
+    A ``Do`` that names anything but a form draws nothing this counter is
+    measuring: images are counted separately by :func:`count_images`.
+    """
+    xobjects = resources.get("/XObject") if resources is not None else None
+    if xobjects is None:
+        return None
+    try:
+        named = xobjects.get_object().get(operands[0])
+        if named is None:
+            return None
+        obj = named.get_object()
+    except Exception:
+        return None
+    if obj.get("/Subtype") != "/Form":
+        return None
+    key = getattr(named, "idnum", None)
+    marker = (int(key), int(named.generation)) if key is not None else None
+    return obj, obj.get("/Resources"), marker
+
+
+def _paints_in(
+    stream_object: Any,
+    resources: Any,
+    pdf: Any,
+    seen: set[tuple[int, int]],
+    depth: int,
+) -> int | None:
+    """Count path-painting operators in one content stream, forms included."""
+    from pypdf.generic import ContentStream
+
+    if depth > MAX_FORM_DEPTH:
+        return 0
+    try:
+        operations = ContentStream(stream_object, pdf).operations
+    except Exception:
+        return None
+
+    total = 0
+    for operands, operator in operations:
+        if operator in _PATH_PAINT_OPERATORS:
+            total += 1
+            continue
+        if operator != b"Do":
+            continue
+        resolved = _resolve_form(operands, resources)
+        if resolved is None:
+            continue
+        obj, form_resources, marker = resolved
+        if marker is not None:
+            if marker in seen:
+                continue
+            seen.add(marker)
+        paints = _paints_in(obj, form_resources, pdf, seen, depth + 1)
+        if paints is None:
+            return None
+        total += paints
+    return total
+
+
+def count_vector_paints(pages: list[Any]) -> int | None:
+    """How many times the pages paint a vector path, or ``None`` if unknown.
+
+    The companion to :func:`count_images`: images are what the page declares,
+    painted paths are what the page does. Between them they cover the two ways
+    a label can carry something its text layer lacks. What is not counted:
+    inline images (as with ``count_images``) and shading patterns. See ADR
+    0012 for why the sentence carries a number rather than a threshold.
+    """
+    try:
+        total = 0
+        for page in pages:
+            contents = page.get("/Contents")
+            if contents is None:
+                continue
+            paints = _paints_in(contents.get_object(), page.get("/Resources"), page.pdf, set(), 0)
+            if paints is None:
+                return None
+            total += paints
+        return total
+    except Exception:
+        # Never fatal, exactly like an uncountable image set: an unknown count
+        # downgrades the claim the tool makes about an absence.
+        return None
 
 
 @dataclass(frozen=True)
@@ -101,6 +214,10 @@ class LabelDocument:
     normalized_lines: list[str]
     image_count: int | None
     extraction_basis: str
+    #: How many times the pages paint a vector path, or None when that is
+    #: unknown or the input is plain text. The companion to ``image_count``:
+    #: what the page declares, and what the page does. No check reads either.
+    vector_shape_count: int | None = None
     cells: tuple[str, ...] | None = None
 
 
@@ -175,6 +292,7 @@ def _build(
     image_count: int | None,
     extraction_basis: str,
     cells: tuple[str, ...] | None = None,
+    vector_shape_count: int | None = None,
 ) -> LabelDocument:
     return LabelDocument(
         path=path,
@@ -186,6 +304,7 @@ def _build(
         image_count=image_count,
         extraction_basis=extraction_basis,
         cells=cells,
+        vector_shape_count=vector_shape_count,
     )
 
 
@@ -260,8 +379,21 @@ def _extract_pdf(path: Path, data: bytes, digest: str, min_chars: int) -> Extrac
             ),
         )
     images = count_images(pages)
-    basis = IMAGES_UNCOUNTABLE_BASIS if images is None else _pdf_basis(images)
-    return _build(path, digest, len(pages), text, images, basis, document_cells(pages))
+    paints = count_vector_paints(pages)
+    if images is None:
+        basis = IMAGES_UNCOUNTABLE_BASIS
+    else:
+        basis = _pdf_basis(images, paints)
+    return _build(
+        path,
+        digest,
+        len(pages),
+        text,
+        images,
+        basis,
+        document_cells(pages),
+        vector_shape_count=paints,
+    )
 
 
 def _extract_text(path: Path, data: bytes, digest: str, min_chars: int) -> ExtractResult:

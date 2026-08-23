@@ -89,6 +89,8 @@ def synthetic_label_pdf(
     images: int = 0,
     nested_images: int = 0,
     placed: Placed = (),
+    paints: int = 0,
+    nested_paints: int = 0,
 ) -> Path:
     """A one page PDF carrying a readable text layer and a chosen image count."""
     drawing = ["BT /F1 11 Tf"]
@@ -101,6 +103,8 @@ def synthetic_label_pdf(
         drawing.append(f"q 10 0 0 10 {60 + slot * 20} 300 cm /Im{slot} Do Q")
     if nested_images:
         drawing.append("q 10 0 0 10 60 200 cm /Fm0 Do Q")
+    for slot in range(paints):
+        drawing.append(f"q 30 0 0 30 {80 + slot * 40} 100 re f Q")
     content = "\n".join(drawing).encode("ascii")
 
     first_image = 6
@@ -126,11 +130,12 @@ def synthetic_label_pdf(
     objects += [_image_object() for _ in range(images)]
     if nested_images:
         nested_refs = " ".join(f"/In{n} {nested_first + n} 0 R" for n in range(nested_images))
+        form_payload = b"q Q" + b"\nq 30 0 0 30 0 0 re f Q\n" * nested_paints
         objects.append(
             _stream(
                 "/Type /XObject /Subtype /Form /BBox [0 0 1 1] "
                 f"/Resources << /XObject << {nested_refs} >> >>",
-                b"q Q",
+                form_payload,
             )
         )
         objects += [_image_object() for _ in range(nested_images)]
