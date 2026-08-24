@@ -32,6 +32,7 @@ from __future__ import annotations
 import re
 from collections.abc import Callable
 from dataclasses import dataclass
+from decimal import Decimal, InvalidOperation
 
 from .citations import issued_format, reg
 from .extract import LabelDocument
@@ -558,16 +559,24 @@ def _pcl018(doc: LabelDocument, ctx: CheckContext) -> CheckResult:
     # test_multiple_conforming_total_rows_conforms): a repeated line is not
     # assumed to be a duplicate-extraction artifact of the same row, since a
     # label can genuinely carry more than one identically-formatted total.
-    rows: list[tuple[str, list[float]]] = []
+    # Values are parsed as Decimal to avoid IEEE-754 float rounding where e.g.
+    # 99.999999999999999999% would round-trip to 100.0.
+    rows: list[tuple[str, list[Decimal]]] = []
     for line in doc.normalized_lines:
         match = _TOTAL_ROW.match(_row_label(line))
         if not match:
             continue
         row_text = match.group(0)
-        values = [float(v.rstrip("% ").strip()) for v in re.findall(_PERCENT, match.group(1))]
+        raw_vals = [v.rstrip("% ").strip() for v in re.findall(_PERCENT, match.group(1))]
+        values: list[Decimal] = []
+        for raw in raw_vals:
+            try:
+                values.append(Decimal(raw))
+            except InvalidOperation:
+                pass
         rows.append((row_text, values))
     if rows:
-        deviations = [(row, v) for row, values in rows for v in values if v != 100.0]
+        deviations = [(row, v) for row, values in rows for v in values if v != Decimal("100")]
         if deviations:
             cited = "; ".join(f"{row!r} has {v}" for row, v in deviations)
             return _bad(

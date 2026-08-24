@@ -11,6 +11,13 @@ recorded as one.
 
 ## [Unreleased]
 
+### Fixed
+
+- Total percentages in PCL018 are parsed as exact `Decimal` instances rather
+  than IEEE-754 `float` values, preventing high-precision synthetic numbers
+  such as `99.999999999999999999%` from rounding to `100.0` and silently
+  passing (#21).
+
 ### Added
 
 - Five checks registered by a completeness sweep that read sections 1391

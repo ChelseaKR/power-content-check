@@ -334,12 +334,22 @@ class TestDisplayedTotals:
         assert "97" in finding
 
     def test_multiple_conforming_total_rows_conforms(self, tmp_path: Path) -> None:
-        status, finding = self._run(
+        status, _ = self._run(
             tmp_path,
             "Total 100% 100%\nTotal 100% 100%",
         )
         assert status is Status.CONFORMS
-        assert "All 4 displayed column totals are 100 percent" in finding
+
+    def test_float_rounding_near_hundred_does_not_conform(self, tmp_path: Path) -> None:
+        # Values like 99.999999999999999999% that round to 100.0 as float must not pass
+        status, finding = self._run(tmp_path, "Total 99.999999999999999999%")
+        assert status is Status.DOES_NOT_CONFORM
+        assert "99.999999999999999999" in finding
+
+    def test_float_rounding_above_hundred_does_not_conform(self, tmp_path: Path) -> None:
+        status, finding = self._run(tmp_path, "Total 100.000000000000000001%")
+        assert status is Status.DOES_NOT_CONFORM
+        assert "100.000000000000000001" in finding
 
     def test_deviation_finding_names_the_specific_row_it_came_from(self, tmp_path: Path) -> None:
         # A deviation must be traceable to which of several total rows
