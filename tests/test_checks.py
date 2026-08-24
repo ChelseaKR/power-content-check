@@ -380,3 +380,55 @@ class TestGhgUnits:
         status, finding = self._run(tmp_path, "Greenhouse gas emissions intensity 410")
         assert status is Status.DOES_NOT_CONFORM
         assert "CO2e" in finding
+
+
+class TestDomainMatching:
+    def _run_pcl(self, tmp_path: Path, body: str, check_id: str) -> tuple[Status, str]:
+        from power_content_check.checks import BY_ID
+
+        path = tmp_path / "synthetic.txt"
+        path.write_text(body + "\n" + ("filler line for length. " * 20))
+        document = extract(path)
+        assert isinstance(document, LabelDocument)
+        run = BY_ID[check_id].run
+        assert run is not None
+        result = run(document, CheckContext())
+        return result.status, result.finding
+
+    def test_email_address_is_not_treated_as_supplier_website(self, tmp_path: Path) -> None:
+        body = (
+            "2024 POWER CONTENT LABEL\n"
+            "Example Municipal Utility District\n"
+            "Contact: billing@example-utility.example.com\n"
+            "(555) 555-0100\n"
+        )
+        status, finding = self._run_pcl(tmp_path, body, "PCL003")
+        assert status is Status.DOES_NOT_CONFORM
+        assert "No web address for the retail supplier" in finding
+
+    def test_email_address_is_not_treated_as_energy_commission_website(self, tmp_path: Path) -> None:
+        body = (
+            "2024 POWER CONTENT LABEL\n"
+            "California Energy Commission\n"
+            "Contact: info@energy.ca.gov\n"
+            "(916) 555-0199\n"
+        )
+        status, finding = self._run_pcl(tmp_path, body, "PCL005")
+        assert status is Status.DOES_NOT_CONFORM
+        assert "No Energy Commission web address" in finding
+
+    def test_valid_website_alongside_email_is_detected(self, tmp_path: Path) -> None:
+        body = (
+            "2024 POWER CONTENT LABEL\n"
+            "Example Municipal Utility District\n"
+            "Support: support@example-utility.example.com\n"
+            "Website: https://www.example-utility.example.com\n"
+            "Energy Commission: https://www.energy.ca.gov/programs\n"
+            "(555) 555-0100\n"
+        )
+        status_003, _ = self._run_pcl(tmp_path, body, "PCL003")
+        assert status_003 is Status.CONFORMS
+
+        status_005, _ = self._run_pcl(tmp_path, body, "PCL005")
+        assert status_005 is Status.CONFORMS
+

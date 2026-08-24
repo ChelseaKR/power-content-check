@@ -46,6 +46,7 @@ _LEADING_JUNK = re.compile(r"^[^0-9a-z]+")
 _PHONE = re.compile(
     r"(?<![0-9])(?:\+?1[\s.\-]?)?(?:\(\d{3}\)\s?|\d{3}[\s.\-])\d{3}[\s.\-]\d{4}(?![0-9])"
 )
+_EMAIL = re.compile(r"\b[a-z0-9._%+\-]+@[a-z0-9.\-]+\.[a-z]{2,}\b")
 _DOMAIN = re.compile(
     r"(?:https?://)?(?:[a-z0-9](?:[a-z0-9\-]*[a-z0-9])?\.)+"
     r"(?:com|org|net|gov|edu|us|coop|io|info|biz|energy)\b"
@@ -84,7 +85,7 @@ def _fuel_row_present(doc: LabelDocument, term: str) -> tuple[bool, str]:
 
 
 def _domains(doc: LabelDocument) -> list[str]:
-    text = doc.raw_text.lower()
+    text = _EMAIL.sub(" ", doc.raw_text.lower())
     return [m.group(0) for m in _DOMAIN.finditer(text)]
 
 
