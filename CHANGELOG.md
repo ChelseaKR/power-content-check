@@ -63,6 +63,15 @@ recorded as one.
 
 ### Fixed
 
+- PCL003, PCL004 and PCL005 read the domain half of an email address as a
+  website address, because `_DOMAIN` ran over the raw text and an address's
+  domain is domain shaped. A label whose only contact was
+  `billing@example-utility.example.com` reported CONFORMS on PCL003, which
+  is a pass the check was not entitled to on a document carrying no website
+  address at all. Email addresses are now taken out of the text before the
+  website matcher reads it. Conclusions about all ten cached published
+  labels are unchanged.
+
 - PCL018 (displayed column totals) pooled every matching total row's values
   into one undifferentiated list, so a deviation could no longer be traced
   to the specific row that produced it once more than one total row was
