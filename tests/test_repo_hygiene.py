@@ -155,3 +155,35 @@ class TestWorkflowHardening:
         for workflow in self.workflows():
             text = workflow.read_text(encoding="utf-8")
             assert "uv sync --frozen" not in text, f"{workflow.name} uses --frozen"
+
+
+SOURCE_FILES = [
+    p
+    for p in sorted((ROOT / "src").rglob("*.py")) + sorted((ROOT / "scripts").rglob("*.py"))
+    if "__pycache__" not in p.parts
+]
+
+
+class TestDigitClasses:
+    r"""Digit classes are written ``[0-9]``, never ``\d``.
+
+    Python's ``\d`` matches every Unicode decimal digit, 680 characters
+    against ASCII's ten, and ``float`` and ``Decimal`` convert all of them.
+    A pattern that matches wider than the code deriving a value from it means
+    the tool reports a number it did not read. Enforced here rather than
+    remembered, because the failure is invisible on every input anyone tries.
+    """
+
+    def test_there_are_source_files_to_check(self) -> None:
+        assert len(SOURCE_FILES) > 10
+
+    @pytest.mark.parametrize(
+        "path", SOURCE_FILES, ids=[str(p.relative_to(ROOT)) for p in SOURCE_FILES]
+    )
+    def test_no_unicode_digit_class(self, path: Path) -> None:
+        hits = [
+            f"line {number}"
+            for number, line in enumerate(path.read_text(encoding="utf-8").splitlines(), start=1)
+            if "\\" + "d" in line
+        ]
+        assert not hits, f"{path.relative_to(ROOT)} writes a digit class as \\d at {hits}"

@@ -389,6 +389,27 @@ class TestAWebAddressIsNotAnEmailAddress:
     website address for the Energy Commission. A label whose only contact is an
     email address carries neither, and a check that read the domain half of an
     address as a website would report CONFORMS on a document that deviates.
+def _arabic_indic(text: str) -> str:
+    """Rewrite ASCII digits as ARABIC-INDIC DIGIT ZERO through NINE.
+
+    Built from the code point rather than written as literals, so this file
+    stays ASCII and the linter's ambiguous-character rule does not have to be
+    silenced to let a test in.
+    """
+    return "".join(chr(0x0660 + int(c)) if c in "0123456789" else c for c in text)
+
+
+class TestDigitsTheToolCanActuallyRead:
+    r"""A pattern must not match digits the value derivation cannot read.
+
+    ``\d`` matches 680 characters, of which ten are ASCII. Everything
+    downstream of these patterns is ASCII only: ``_phones`` strips
+    ``[^0-9]``, a matched percentage is converted for comparison, and a
+    matched year is printed as the data year. Where the pattern is wider than
+    the derivation, the tool reports a number it never read, and in PCL002
+    that was a pass: an Arabic-Indic telephone number reduced to the empty
+    string, which then counted as one of the two distinct numbers section
+    1393.1(c)(4) lists.
     """
 
     def _doc(self, tmp_path: Path, body: str) -> LabelDocument:
@@ -446,3 +467,59 @@ class TestAWebAddressIsNotAnEmailAddress:
             "Email billing@example-utility.example.com or visit www.example-utility.example.com",
         )
         assert status is Status.CONFORMS
+        return result.status, result.finding
+
+    def test_a_number_whose_digits_were_discarded_is_not_a_second_number(
+        self, tmp_path: Path
+    ) -> None:
+        status, _ = self._run(
+            tmp_path,
+            "PCL002",
+            "Example Utility (555) 555-0100\nEnergy Commission " + _arabic_indic("916 555 0199"),
+        )
+        assert status is not Status.CONFORMS
+
+    def test_no_telephone_key_is_empty(self, tmp_path: Path) -> None:
+        from power_content_check.checks import _phones
+
+        document = self._doc(tmp_path, "Call " + _arabic_indic("555 555 0100"))
+        assert "" not in _phones(document)
+
+    def test_a_total_row_the_tool_cannot_read_is_not_evaluated(self, tmp_path: Path) -> None:
+        status, _ = self._run(tmp_path, "PCL018", "Total " + _arabic_indic("100") + "%")
+        assert status is Status.NOT_EVALUATED
+
+    def test_a_title_year_the_tool_cannot_read_is_not_a_data_year(self, tmp_path: Path) -> None:
+        status, _ = self._run(
+            tmp_path, "PCL017", "20" + _arabic_indic("24") + " POWER CONTENT LABEL"
+        )
+        assert status is Status.DOES_NOT_CONFORM
+
+    def test_a_figure_the_tool_cannot_read_is_not_a_figure(self, tmp_path: Path) -> None:
+        from power_content_check.checks import _fuel_row_present
+
+        document = self._doc(
+            tmp_path, "Sources this year: geothermal " + _arabic_indic("5") + "%, solar 20%."
+        )
+        assert _fuel_row_present(document, "geothermal") == (False, "absent")
+
+    # Positive controls. Every one of these is the ASCII case of a test above,
+    # and every one passes before and after the change.
+
+    def test_two_ascii_telephone_numbers_still_conform(self, tmp_path: Path) -> None:
+        status, _ = self._run(
+            tmp_path, "PCL002", "Example Utility (555) 555-0100\nEnergy Commission 916 555-0199"
+        )
+        assert status is Status.CONFORMS
+
+    def test_an_ascii_total_row_still_conforms(self, tmp_path: Path) -> None:
+        assert self._run(tmp_path, "PCL018", "Total 100% 100%")[0] is Status.CONFORMS
+
+    def test_an_ascii_title_year_still_conforms(self, tmp_path: Path) -> None:
+        assert self._run(tmp_path, "PCL017", "2024 POWER CONTENT LABEL")[0] is Status.CONFORMS
+
+    def test_an_ascii_figure_is_still_a_figure(self, tmp_path: Path) -> None:
+        from power_content_check.checks import _fuel_row_present
+
+        document = self._doc(tmp_path, "Sources this year: geothermal 5%, solar 20%.")
+        assert _fuel_row_present(document, "geothermal") == (True, "figure")
