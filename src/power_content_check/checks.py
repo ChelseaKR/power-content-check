@@ -41,17 +41,30 @@ from .model import Basis, Blocker, CheckResult, CheckSpec, Status
 # matching helpers
 # ---------------------------------------------------------------------------
 
-_PERCENT = r"\d{1,3}(?:\.\d+)?\s?%"
+# Digit classes here are written [0-9], never the Unicode digit class escape.
+# That escape matches every Unicode decimal digit, 680 characters against
+# ASCII's ten, and float and Decimal convert all 680. Everything downstream of
+# these patterns reads ASCII only: _phones strips [^0-9] from what _PHONE
+# matched, and a matched percentage is converted before it is compared. A
+# pattern wider than the code deriving a value from it reports a number the
+# tool never read, and in PCL002 that was a pass: a telephone number in
+# another numeral system reduced to the empty string, and the empty string
+# then counted as one of the two distinct numbers section 1393.1(c)(4) lists.
+# Narrowed, a figure the tool cannot read is absent or not evaluated rather
+# than silently valued. tests/test_repo_hygiene.py enforces this across the
+# package, because the failure is invisible on every input anyone tries.
+_PERCENT = r"[0-9]{1,3}(?:\.[0-9]+)?\s?%"
 _LEADING_JUNK = re.compile(r"^[^0-9a-z]+")
 _PHONE = re.compile(
-    r"(?<![0-9])(?:\+?1[\s.\-]?)?(?:\(\d{3}\)\s?|\d{3}[\s.\-])\d{3}[\s.\-]\d{4}(?![0-9])"
+    r"(?<![0-9])(?:\+?1[\s.\-]?)?(?:\([0-9]{3}\)\s?|[0-9]{3}[\s.\-])"
+    r"[0-9]{3}[\s.\-][0-9]{4}(?![0-9])"
 )
 _DOMAIN = re.compile(
     r"(?:https?://)?(?:[a-z0-9](?:[a-z0-9\-]*[a-z0-9])?\.)+"
     r"(?:com|org|net|gov|edu|us|coop|io|info|biz|energy)\b"
 )
 _TOTAL_ROW = re.compile(rf"^total\s+((?:{_PERCENT}\s*)+)$")
-_YEAR_TITLE = re.compile(r"\b((?:19|20)\d{2})\s+power content label\b")
+_YEAR_TITLE = re.compile(r"\b((?:19|20)[0-9]{2})\s+power content label\b")
 
 
 def _row_label(line: str) -> str:

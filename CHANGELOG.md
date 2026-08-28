@@ -63,6 +63,21 @@ recorded as one.
 
 ### Fixed
 
+- Digit classes across the package are written `[0-9]` rather than as the
+  Unicode digit class escape, which matches 680 characters where ASCII has
+  ten. Everything downstream of these patterns reads ASCII only, so the
+  pattern was wider than the code deriving a value from it, and PCL002 read
+  that as a pass: a telephone number in another numeral system was matched,
+  reduced to the empty string by the ASCII-only strip, and the empty string
+  then counted as one of the two distinct numbers section 1393.1(c)(4)
+  lists, so `[  ok  ] 2 distinct telephone numbers appear on the label` was
+  reported for a document from which one number had been read. Narrowed, a
+  figure the tool cannot read is reported absent or not evaluated rather
+  than silently valued: a total row in another numeral system now makes
+  PCL018 not evaluated instead of conforming. A test in
+  `tests/test_repo_hygiene.py` enforces the rule across `src` and `scripts`.
+  Conclusions about all ten cached published labels are unchanged.
+
 - PCL018 (displayed column totals) pooled every matching total row's values
   into one undifferentiated list, so a deviation could no longer be traced
   to the specific row that produced it once more than one total row was
