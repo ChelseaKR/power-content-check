@@ -63,6 +63,16 @@ recorded as one.
 
 ### Fixed
 
+- PCL018 (displayed column totals) compared displayed percentages as doubles,
+  and `float("99.999999999999999999") == 100.0` is True, so a displayed total
+  that is not one hundred was reported as a pass. `_PERCENT` places no limit
+  on the digits after the point, so nothing bounded the input to what a
+  double can hold. The figures are read as decimals now, compared by value
+  rather than by representation, so 100, 100.0 and 100.00 all still conform
+  and a total that only rounds to one hundred is reported with the figure the
+  label displays. Adversarial rather than observed: every published label
+  read for this project displays whole percentages.
+
 - Digit classes across the package are written `[0-9]` rather than as the
   Unicode digit class escape, which matches 680 characters where ASCII has
   ten. Everything downstream of these patterns reads ASCII only, so the

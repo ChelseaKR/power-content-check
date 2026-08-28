@@ -322,6 +322,36 @@ class TestDisplayedTotals:
         status, _ = self._run(tmp_path, "Total 100.0% 100.0%")
         assert status is Status.CONFORMS
 
+    # _PERCENT places no limit on the digits after the point, and a double
+    # cannot hold twenty of them. Read as a float, a displayed total that is
+    # not one hundred rounds to exactly 100.0 and the check reports a pass it
+    # is not entitled to. Read as a decimal, the comparison is against the
+    # figure the label displays.
+
+    @pytest.mark.parametrize(
+        "displayed",
+        ["99.999999999999999999", "100.000000000000000001", "99.99999999999999999999999"],
+    )
+    def test_a_total_that_only_rounds_to_one_hundred_does_not_conform(
+        self, tmp_path: Path, displayed: str
+    ) -> None:
+        status, finding = self._run(tmp_path, f"Total {displayed}%")
+        assert status is Status.DOES_NOT_CONFORM
+        assert displayed in finding
+
+    # Positive controls. Decimal compares by value, not by representation, so
+    # the renderings of one hundred that a label may carry still conform, and
+    # a whole-number deviation is still named by its displayed value.
+
+    @pytest.mark.parametrize("displayed", ["100", "100.0", "100.00", "100.000000000000000000"])
+    def test_every_rendering_of_one_hundred_conforms(self, tmp_path: Path, displayed: str) -> None:
+        assert self._run(tmp_path, f"Total {displayed}%")[0] is Status.CONFORMS
+
+    def test_a_whole_number_deviation_is_still_named(self, tmp_path: Path) -> None:
+        status, finding = self._run(tmp_path, "Total 97%")
+        assert status is Status.DOES_NOT_CONFORM
+        assert "97" in finding
+
     def test_multiple_total_rows_flags_deviation_in_later_row(self, tmp_path: Path) -> None:
         body = (
             "Total 100% 100% 100%\n"
