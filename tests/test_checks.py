@@ -380,3 +380,69 @@ class TestGhgUnits:
         status, finding = self._run(tmp_path, "Greenhouse gas emissions intensity 410")
         assert status is Status.DOES_NOT_CONFORM
         assert "CO2e" in finding
+
+
+class TestAWebAddressIsNotAnEmailAddress:
+    """An email address is not a website address, and must not satisfy one.
+
+    Section 1393.1(c)(4) lists a website address for the retail supplier and a
+    website address for the Energy Commission. A label whose only contact is an
+    email address carries neither, and a check that read the domain half of an
+    address as a website would report CONFORMS on a document that deviates.
+    """
+
+    def _doc(self, tmp_path: Path, body: str) -> LabelDocument:
+        path = tmp_path / "synthetic.txt"
+        path.write_text(body + "\n" + ("filler line for length. " * 20))
+        document = extract(path)
+        assert isinstance(document, LabelDocument)
+        return document
+
+    def _run(self, tmp_path: Path, check_id: str, body: str) -> tuple[Status, str]:
+        from power_content_check.checks import BY_ID
+
+        run = BY_ID[check_id].run
+        assert run is not None
+        result = run(self._doc(tmp_path, body), CheckContext())
+        return result.status, (result.detail or "") + " " + result.finding
+
+    def test_a_supplier_email_alone_does_not_satisfy_pcl003(self, tmp_path: Path) -> None:
+        status, _ = self._run(
+            tmp_path, "PCL003", "Example Utility\nbilling@example-utility.example.com"
+        )
+        assert status is Status.DOES_NOT_CONFORM
+
+    def test_an_energy_ca_gov_email_alone_does_not_satisfy_pcl005(self, tmp_path: Path) -> None:
+        status, _ = self._run(tmp_path, "PCL005", "Questions about this label: pscd@energy.ca.gov")
+        assert status is Status.DOES_NOT_CONFORM
+
+    def test_pcl004_does_not_offer_an_email_as_the_web_address_it_saw(self, tmp_path: Path) -> None:
+        status, text = self._run(tmp_path, "PCL004", "Write to the CEC at pscd@energy.ca.gov")
+        assert status is Status.DOES_NOT_CONFORM
+        assert "an energy.ca.gov web address" not in text
+
+    def test_the_scrub_removes_only_the_address(self, tmp_path: Path) -> None:
+        from power_content_check.checks import _domains
+
+        document = self._doc(
+            tmp_path,
+            "Email billing@example-utility.example.com or visit www.example-utility.example.com",
+        )
+        assert _domains(document) == ["www.example-utility.example.com"]
+
+    # Positive controls. Both hold before and after the change, and guard the
+    # opposite error: a scrub that took a real website out with the email.
+
+    def test_a_website_alone_still_satisfies_pcl003(self, tmp_path: Path) -> None:
+        status, _ = self._run(
+            tmp_path, "PCL003", "Example Utility\nwww.example-utility.example.com"
+        )
+        assert status is Status.CONFORMS
+
+    def test_a_website_beside_an_email_still_satisfies_pcl003(self, tmp_path: Path) -> None:
+        status, _ = self._run(
+            tmp_path,
+            "PCL003",
+            "Email billing@example-utility.example.com or visit www.example-utility.example.com",
+        )
+        assert status is Status.CONFORMS

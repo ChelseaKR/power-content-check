@@ -50,6 +50,10 @@ _DOMAIN = re.compile(
     r"(?:https?://)?(?:[a-z0-9](?:[a-z0-9\-]*[a-z0-9])?\.)+"
     r"(?:com|org|net|gov|edu|us|coop|io|info|biz|energy)\b"
 )
+#: An email address, matched so that it can be taken out of the text before
+#: :data:`_DOMAIN` reads it. The domain half of an address is domain shaped, so
+#: without this the two are indistinguishable to the website matcher.
+_EMAIL = re.compile(r"[a-z0-9][a-z0-9._%+\-]*@[a-z0-9](?:[a-z0-9\-]*[a-z0-9])?(?:\.[a-z0-9\-]+)+")
 _TOTAL_ROW = re.compile(rf"^total\s+((?:{_PERCENT}\s*)+)$")
 _YEAR_TITLE = re.compile(r"\b((?:19|20)\d{2})\s+power content label\b")
 
@@ -84,7 +88,20 @@ def _fuel_row_present(doc: LabelDocument, term: str) -> tuple[bool, str]:
 
 
 def _domains(doc: LabelDocument) -> list[str]:
-    text = doc.raw_text.lower()
+    """Web addresses in the document, with email addresses taken out first.
+
+    Section 1393.1(c)(4) lists a website address, and an email address is not
+    one. The domain half of "billing@example-utility.example.com" is shaped
+    exactly like a website address, so a matcher that reads the raw text finds
+    a website in a label that carries none, and PCL003 and PCL005 report
+    CONFORMS on a document that deviates. Removing the address before matching
+    keeps the weaker fact from standing in for the one the regulation asks for.
+
+    The address is replaced with a space rather than deleted, so that the text
+    on either side of it cannot be fused into a domain that the document does
+    not contain.
+    """
+    text = _EMAIL.sub(" ", doc.raw_text.lower())
     return [m.group(0) for m in _DOMAIN.finditer(text)]
 
 
