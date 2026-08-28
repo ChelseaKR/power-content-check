@@ -48,7 +48,7 @@ class TestPrecedence:
     """Higher codes win. These pin the combinations callers actually hit.
 
     With the catalog as registered, a readable document always carries the
-    twelve checks that enforce nothing, so NOT_EVALUATED shadows
+    seventeen checks that enforce nothing, so NOT_EVALUATED shadows
     NONCONFORMANCE on every run over a readable document and code 1 is
     unreachable until a conditional check implements. That is the documented
     ordinary result, not a defect; these tests hold the shadowing on purpose,

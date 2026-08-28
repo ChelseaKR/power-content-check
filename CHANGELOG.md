@@ -13,6 +13,14 @@ recorded as one.
 
 ### Added
 
+- Track J on the roadmap: auditing implemented checks for the ability to
+  fail. A registered check that enforces nothing announces itself in every
+  report; an implemented check that cannot reach its deviation branch does
+  not, and nothing in the catalog, the coverage number or the gate tells it
+  apart from a check that works. It is also the only track that waits on
+  nothing outside the repository. The entry records the method and the four
+  defects of 27 August 2026 that prompted it.
+
 - Five checks registered by a completeness sweep that read sections 1391
   through 1394 and PUC 398.4 end to end on 22 August 2026 and diffed every
   content-shaped obligation against the catalog. All five enforce nothing:
@@ -79,6 +87,31 @@ recorded as one.
   the exact row text it came from.
 
 ### Changed
+
+- The prose caught up with the calibration set. Widening it to thirty four
+  labels updated the count in `docs/sources.md` but left the summary
+  paragraph six lines below still describing the twenty four, and left the
+  same figure standing in the README, in the roadmap's Track B and in
+  PCL021's registered reason. Those now say thirty four, which is what the
+  record supports: the batch of ten is recorded as holding the standing
+  result, and the absence of a telephone number is one of the two deviations
+  that result is made of. Four observations are deliberately left at twenty
+  four, with a paragraph in `docs/sources.md` saying which and why: the
+  per-column sums behind PCL025, the search for a section 1393.1(c)(6)
+  statement behind PCL029, and the single-label observations noted against
+  PCL020 and PCL034 are separate measurements rather than consequences of
+  the standing result, and the batch of ten was not remeasured for them.
+- The completeness sweep took the count of registered checks that enforce
+  nothing from twelve to seventeen, and three places still said twelve: the
+  calibration record, the roadmap's account of the exit-code shadowing, and
+  the docstring on the precedence tests. The shadowing itself is unchanged;
+  only the number was wrong.
+- The roadmap's Track A pointed the trigger derivation at `docs/adr/0010`,
+  which the schema version has held since Track F landed. Track I already
+  recorded that it takes 0013. Track A now says the same.
+- Track G's `--version` flag is marked landed, because it is: it needed
+  nothing from PyPI, and only the PyPI registration in that track is
+  actually waiting on anything.
 
 - The calibration set went from twenty four published 2024 labels to thirty
   four, in two capped fetch invocations, chosen for supplier types the set
