@@ -159,7 +159,7 @@ So the page is now read column by column before that check gives up. Text is
 grouped into the horizontal spans a reader would see, and two spans are one
 cell when one's horizontal extent contains the other's and they sit close
 enough together to be lines of one cell. That puts a wrapped heading back
-together, and the check is evaluated on all twenty four.
+together, and the check is evaluated on all thirty four.
 
 Position is used to decide which cell a word is in, and for nothing else. It is
 consulted only inside the branch that reports not evaluated, so the most it can
@@ -249,9 +249,9 @@ a local, ignored cache if you want to exercise the tool against real documents.
 It honours robots.txt, rate limits itself, and refuses to fetch in bulk. Twenty
 four of the ninety one published labels have been read this way, and three of
 the checks are the way they are because of what a wider set showed that a
-narrower one did not. On all twenty four the same two checks, and only those
+narrower one did not. On all thirty four the same two checks, and only those
 two, report a deviation. Which is a fact about the rendering the Energy
-Commission issues, not about twenty four suppliers.
+Commission issues, not about thirty four suppliers.
 
 `scripts/inspect_artwork.py` reports the artwork on a PDF page. Neither script
 is part of the package and neither is invoked by the CLI, which is offline.

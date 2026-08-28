@@ -904,7 +904,7 @@ CHECKS: tuple[RegisteredCheck, ...] = (
         "assessed as the way to settle that and does not settle it. Coordinates give "
         "where a string sits; ownership is a different fact, and turning nearness into "
         "ownership means choosing a distance, which is a threshold no published source "
-        "supplies. On the twenty four published 2024 labels this project read there is "
+        "supplies. On the thirty four published 2024 labels this project read there is "
         "no telephone number at all, so there is nothing to attribute, and each label "
         "carries one web address for the Energy Commission and one for the supplier, "
         "told apart by their domains, which PCL003 and PCL005 already decide without "
