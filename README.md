@@ -191,6 +191,12 @@ here is written from memory. The sources are listed in
 [docs/sources.md](docs/sources.md), each with the URL it was fetched from and
 the date it was read.
 
+If you came here to verify this tool rather than to use it,
+[docs/AUDITING.md](docs/AUDITING.md) is the entry point: how to audit a check
+against the source it cites, how to reproduce a finding by hand, what the tool
+refuses to conclude and why, and how to catch an implemented check that cannot
+fail.
+
 Each check declares a basis:
 
 - **regulation text**: the regulation enumerates the element in words.
