@@ -271,11 +271,17 @@ that publishes behind the existing release gate follows that, not before.
    0013 when Track A lands, unless another decision records first; the
    second-ruleset ADR when triggered (Track C). Numbers go to whichever
    decision lands, and this list moves in the same commit.
-3. **Auditor-facing documentation**: a short document aimed at someone
-   verifying this tool rather than using it - how to reproduce a finding
-   by hand, how to audit the catalog against the sources, what the tool
-   refuses to conclude and why. Much of it exists across the ADRs and
-   `docs/sources.md`; it wants collecting under one entry point.
+3. **Auditor-facing documentation.** Landed as `docs/AUDITING.md`: how to
+   audit a check against the source it cites, how to reproduce a finding by
+   hand, what a status means and why not evaluated can never become a pass,
+   what the extraction basis covers, what the tool refuses to conclude, how
+   to audit the gaps, how to catch an implemented check that cannot fail,
+   and where the calibration record lives. It links out to the ADR that
+   decided each question rather than restating it, because a restatement
+   drifts and the drift is invisible. Its factual claims are pinned by
+   `tests/test_auditing_doc.py` rather than proofread: the enumerations it
+   prints are compared against the model, every link and check identifier
+   and quoted path is resolved, and the commands it gives are executed.
 4. **Outreach, with the affiliation line carried intact.** The tool is
    useful to researchers and to suppliers checking documents they were
    issued. Any sharing of it repeats, verbatim, the disclaimer that this

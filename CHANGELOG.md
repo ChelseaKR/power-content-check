@@ -20,6 +20,21 @@ recorded as one.
   apart from a check that works. It is also the only track that waits on
   nothing outside the repository. The entry records the method and the four
   defects of 27 August 2026 that prompted it.
+- `docs/AUDITING.md`, an entry point for someone verifying this tool rather
+  than using it: how to audit a check against the source it cites, how to
+  reproduce a finding by hand, what a status means and why not evaluated can
+  never become a pass, what the extraction basis covers and does not, what
+  the tool refuses to conclude, how to audit the gaps rather than only the
+  checks, how to catch an implemented check that cannot fail, and where the
+  calibration record lives. It links out to the ADR that decided each
+  question rather than restating it, because a restatement drifts from the
+  decision and the drift is invisible.
+- `tests/test_auditing_doc.py`, which pins that document to the tool rather
+  than proofreading it. The enumerations it prints are compared against the
+  model, every relative link and check identifier and quoted repository path
+  is resolved, and the commands it gives an auditor are executed. A previous
+  attempt at this document listed five result statuses where the model
+  defines three, which is what these tests make impossible to repeat.
 
 - Five checks registered by a completeness sweep that read sections 1391
   through 1394 and PUC 398.4 end to end on 22 August 2026 and diffed every
