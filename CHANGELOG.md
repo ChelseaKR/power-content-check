@@ -80,6 +80,39 @@ recorded as one.
   website matcher reads it. Conclusions about all ten cached published
   labels are unchanged.
 
+- A usage error now exits 64, which is the code the tool has always
+  published. `ExitCode.USAGE_ERROR`, the README's exit code table and the
+  epilog the CLI prints in its own `--help` all said 64 while argparse's
+  default of 2 was what a caller actually received, and 2 is the code that
+  means "at least one check could not be evaluated". The two tests covering
+  usage errors asserted 2, so they pinned the defect rather than caught it.
+- `scripts/check_regressions.py compare` reported a pass over an empty
+  comparison. It diffs the intersection of the cache and the baseline; when
+  that intersection was empty it printed "N documents conclude exactly as
+  recorded", with N the size of the cache rather than the number compared,
+  and exited 0. An empty comparison now says so and exits 1, and the sentence
+  reports the number of documents actually compared.
+- Guards that could not fail, repaired and given break tests. The hostile
+  input suite asserted that a damaged file did not conform on every one of
+  the thirty five registered checks, which the seventeen unimplemented ones
+  made unreachable; it now asserts, as membership rather than as a count,
+  that a check enforcing nothing never reports CONFORMS. Both of its mutation
+  loops skip unreadable mutants and would have passed having asserted nothing
+  if extraction ever refused all of them, so both now assert a floor on how
+  many were readable. `MUTATIONS = 120` sat unused in that module beside a
+  function returning 23.
+- The workflow rule against silencing a security gate only fired when the
+  mute and the tool name sat on the same line, so the ordinary form, a
+  `continue-on-error: true` on the line below the step's `run:`, was
+  invisible to it. It now also refuses any muting construct anywhere in a
+  workflow that runs a security tool, and asserts that such a workflow
+  exists. The lockfile rule forbade `uv sync --frozen` without ever requiring
+  `--locked`, so a bare `uv sync` passed it.
+- The repository rules read the `Makefile` for the first time. Every one of
+  them selected files by suffix, which silently excluded the file the gate
+  itself is written in: `make verify` could have had make's `-` ignore
+  errors prefix put on its bandit line, or lost its dependency on the
+  security target, with nothing in the suite able to notice.
 - PCL018 (displayed column totals) pooled every matching total row's values
   into one undifferentiated list, so a deviation could no longer be traced
   to the specific row that produced it once more than one total row was
