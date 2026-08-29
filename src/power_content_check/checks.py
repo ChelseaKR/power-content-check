@@ -54,6 +54,18 @@ _DOMAIN = re.compile(
 #: :data:`_DOMAIN` reads it. The domain half of an address is domain shaped, so
 #: without this the two are indistinguishable to the website matcher.
 _EMAIL = re.compile(r"[a-z0-9][a-z0-9._%+\-]*@[a-z0-9](?:[a-z0-9\-]*[a-z0-9])?(?:\.[a-z0-9\-]+)+")
+#: The annotation of section 1393.1(c)(7), and what follows the word the
+#: subdivision itself uses. The subdivision requires the display to be
+#: annotated to identify a group; it prescribes no punctuation, unlike
+#: subdivision (l), whose footnote text is set out verbatim. So nothing here
+#: anchors on a bracket: the labels the Energy Commission issues parenthesise
+#: the annotation, and a supplier writing the same words after a dash or a
+#: colon has identified the same group. The gap before "primarily" admits
+#: brackets, punctuation and figures but no letters, so the match cannot step
+#: over a word to reach the annotation.
+_UNSPECIFIED_ANNOTATION = re.compile(
+    r"unspecified power\b[^a-z]{0,20}primarily\s+([a-z][a-z ]{0,80})"
+)
 _TOTAL_ROW = re.compile(rf"^total\s+((?:{_PERCENT}\s*)+)$")
 _YEAR_TITLE = re.compile(r"\b((?:19|20)\d{2})\s+power content label\b")
 
@@ -409,19 +421,28 @@ def _pcl011(doc: LabelDocument, ctx: CheckContext) -> CheckResult:
 
 
 def _pcl012(doc: LabelDocument, ctx: CheckContext) -> CheckResult:
-    match = re.search(r"unspecified power\s*\(?\s*primarily\s+([a-z ]+?)\s*\)", doc.normalized)
+    match = _UNSPECIFIED_ANNOTATION.search(doc.normalized)
     if match:
-        group = match.group(1).strip()
-        if group in GROUP_NAMES:
-            return _ok(
-                "PCL012",
-                f"Unspecified power is annotated as primarily {group}.",
-            )
+        # The group name has to be what follows "primarily", not merely
+        # something that appears later on the line. Testing the start of the
+        # tail rather than searching it is what keeps "primarily imported
+        # power from fossil fuels" from reading as the fossil fuels group.
+        tail = match.group(1)
+        for group in GROUP_NAMES:
+            if re.match(rf"{re.escape(group)}\b", tail):
+                return _ok(
+                    "PCL012",
+                    f"Unspecified power is annotated as primarily {group}.",
+                )
+        # A display bound, not a rule: the published text says nothing about
+        # where the annotation ends, so the finding quotes a short run of what
+        # follows the word rather than claiming to have delimited it.
+        seen = " ".join(tail.split()[:6])
         return _bad(
             doc,
             "PCL012",
-            f"Unspecified power is annotated as primarily '{group}', which is not one "
-            "of the two resource groups.",
+            f"Unspecified power is annotated as primarily '{seen}', which does not "
+            "begin with either of the two resource groups.",
             "Section 1393.1(c)(7) requires the annotation to identify either "
             "'Fossil Fuels' or 'Renewables and Zero-Carbon Resources'.",
         )

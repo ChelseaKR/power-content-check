@@ -94,6 +94,18 @@ recorded as one.
   address at all. Email addresses are now taken out of the text before the
   website matcher reads it. Conclusions about all ten cached published
   labels are unchanged.
+- PCL012 (unspecified power annotation) required a closing parenthesis that
+  the pattern never made optional, though the opening one was. An annotation
+  reading "Unspecified Power - primarily fossil fuels" therefore matched
+  nothing and fell through to the "not annotated anywhere" branch, which is
+  a deviation reported against a document that says exactly what section
+  1393.1(c)(7) asks it to say. The subdivision prescribes no punctuation,
+  unlike subdivision (l), so the bracket was a rule this tool wrote. The
+  annotation is now read after any punctuation or none, and the group name
+  has to be what follows "primarily" rather than something appearing later
+  on the line, so an annotation naming the wrong group is still told apart
+  from no annotation at all. Conclusions about all ten cached published
+  labels are unchanged.
 
 - A usage error now exits 64, which is the code the tool has always
   published. `ExitCode.USAGE_ERROR`, the README's exit code table and the

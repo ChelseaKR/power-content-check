@@ -295,6 +295,58 @@ class TestUnspecifiedPowerAnnotation:
         assert status is Status.DOES_NOT_CONFORM
         assert "hydrogen" in finding
 
+    # Section 1393.1(c)(7) requires the display to be annotated to identify a
+    # group. It prescribes no punctuation, unlike subdivision (l), whose
+    # footnote text is set out verbatim. A label that identifies the group
+    # after a dash, a colon or nothing at all has done what the subdivision
+    # says, and a deviation reported against it would be this tool enforcing a
+    # bracket no published source asks for.
+
+    @pytest.mark.parametrize(
+        "body",
+        [
+            "Unspecified Power - primarily fossil fuels 22%",
+            "Unspecified Power: primarily fossil fuels 22%",
+            "Unspecified Power primarily fossil fuels 22%",
+            "Unspecified Power (primarily fossil fuels 22%",
+            "Unspecified Power [primarily fossil fuels] 22%",
+        ],
+    )
+    def test_the_annotation_conforms_whatever_punctuation_carries_it(
+        self, tmp_path: Path, body: str
+    ) -> None:
+        assert self._run(tmp_path, body)[0] is Status.CONFORMS
+
+    def test_the_second_group_conforms_without_parentheses(self, tmp_path: Path) -> None:
+        status, _ = self._run(
+            tmp_path, "Unspecified Power - primarily renewables and zero-carbon resources 22%"
+        )
+        assert status is Status.CONFORMS
+
+    def test_an_invented_group_without_parentheses_names_what_it_saw(self, tmp_path: Path) -> None:
+        # Losing the bracket must not lose the distinction between an
+        # annotation naming the wrong group and no annotation at all.
+        status, finding = self._run(tmp_path, "Unspecified Power - primarily hydrogen 22%")
+        assert status is Status.DOES_NOT_CONFORM
+        assert "hydrogen" in finding
+
+    # Guards on the looseness that dropping the closing bracket could invite.
+    # Both hold before and after the change: the group name has to be what
+    # follows "primarily", not merely something that appears later on the page.
+
+    @pytest.mark.parametrize(
+        "body",
+        [
+            "Unspecified Power - primarily imported power from fossil fuels 22%",
+            "Unspecified Power - primarily hydrogen. Fossil fuels are also used. 22%",
+            "Unspecified Power 22% 0% 31%\nOur mix is primarily fossil fuels.",
+        ],
+    )
+    def test_a_group_name_further_down_the_line_does_not_satisfy_it(
+        self, tmp_path: Path, body: str
+    ) -> None:
+        assert self._run(tmp_path, body)[0] is Status.DOES_NOT_CONFORM
+
 
 class TestDisplayedTotals:
     def _run(self, tmp_path: Path, body: str) -> tuple[Status, str]:
