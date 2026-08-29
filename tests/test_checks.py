@@ -446,3 +446,118 @@ class TestAWebAddressIsNotAnEmailAddress:
             "Email billing@example-utility.example.com or visit www.example-utility.example.com",
         )
         assert status is Status.CONFORMS
+
+
+class TestTheDeviationBranchesNothingHadReached:
+    """Failure paths that no test in this suite ever ran.
+
+    Every implemented check has a reachable `_bad` call, so reading the source
+    tells you nothing is missing. Running the suite with `_bad` instrumented
+    tells you something else: PCL008 and PCL009 never reported
+    DOES_NOT_CONFORM once across all 438 tests. Both are only ever asserted to
+    CONFORM, by `TestConformingLabel` over the clean fixture and by
+    `TestDeficientLabel.test_what_is_present_is_not_flagged` over the
+    deficient one, which carries the very text they look for.
+
+    So the whole deviation half of both checks was unheld. Rewriting either
+    `return _bad(...)` as `return _ok(...)`, which makes the check report
+    conformance on a label missing the thing it exists to look for, left all
+    438 tests passing and total coverage unchanged at 96.65 percent. Neither
+    the suite nor the coverage floor could see it, because the lines were
+    never executed either way: they were exactly two of the four uncovered
+    statements in `checks.py`, at lines 340 and 352.
+
+    A check whose deviation branch nothing reaches is a check that cannot
+    fail, which is the defect class the rest of this pass is about, sitting
+    inside the checks themselves rather than in the harness around them.
+
+    The other two uncovered statements are here for the same reason: PCL002's
+    "exactly one number" case, which is a distinct deviation from its
+    "no number" case, and the line in PCL004 that reports an energy.ca.gov
+    web address among what was seen instead. Both belong to checks that can
+    still fail by other routes, so they are narrower gaps, but they are the
+    same shape and this is the file they belong in.
+    """
+
+    def _doc(self, tmp_path: Path, body: str) -> LabelDocument:
+        path = tmp_path / "synthetic.txt"
+        path.write_text(body + "\n" + ("filler line for length. " * 20))
+        document = extract(path)
+        assert isinstance(document, LabelDocument)
+        return document
+
+    def _run(self, tmp_path: Path, check_id: str, body: str) -> tuple[Status, str]:
+        from power_content_check.checks import BY_ID
+
+        run = BY_ID[check_id].run
+        assert run is not None
+        result = run(self._doc(tmp_path, body), CheckContext())
+        return result.status, (result.detail or "") + " " + result.finding
+
+    def test_pcl008_deviates_when_rps_eligible_renewables_is_not_named(
+        self, tmp_path: Path
+    ) -> None:
+        """The subcategory of section 1393.1(c)(2)(A) is absent."""
+        status, text = self._run(
+            tmp_path,
+            "PCL008",
+            "Renewables and Zero-Carbon Resources\nSolar 20%\nWind 15%\nFossil Fuels\n",
+        )
+        assert status is Status.DOES_NOT_CONFORM
+        assert "RPS-eligible renewables do not appear" in text
+
+    def test_pcl008_conforms_when_it_is_named(self, tmp_path: Path) -> None:
+        """The positive control, so the test above is not passing on a document
+        the extractor could not read."""
+        status, _ = self._run(
+            tmp_path,
+            "PCL008",
+            "Renewables and Zero-Carbon Resources\nRPS-Eligible Renewables 30%\n",
+        )
+        assert status is Status.CONFORMS
+
+    def test_pcl009_deviates_when_the_fossil_fuels_group_is_absent(self, tmp_path: Path) -> None:
+        """The group of section 1393.1(c)(2)(B) is absent."""
+        status, text = self._run(
+            tmp_path,
+            "PCL009",
+            "Renewables and Zero-Carbon Resources\nRPS-Eligible Renewables 30%\nLarge Hydro 10%\n",
+        )
+        assert status is Status.DOES_NOT_CONFORM
+        assert "Fossil Fuels" in text
+
+    def test_pcl009_conforms_when_the_group_appears(self, tmp_path: Path) -> None:
+        """The positive control."""
+        status, _ = self._run(tmp_path, "PCL009", "Fossil Fuels\nNatural Gas 40%\nCoal 5%\n")
+        assert status is Status.CONFORMS
+
+    def test_pcl002_deviates_on_exactly_one_telephone_number(self, tmp_path: Path) -> None:
+        """One number is its own deviation, not the same one as none.
+
+        Section 1393.1(c)(4) lists a number for the retail supplier and a
+        number for the Energy Commission. A label carrying one of the two is
+        the case this branch reports, and it says so in different words than
+        the no-number branch, which is the branch the deficient fixture hits.
+        """
+        status, text = self._run(
+            tmp_path, "PCL002", "Example Utility\nCustomer service: (800) 555-0101\n"
+        )
+        assert status is Status.DOES_NOT_CONFORM
+        assert "Only one telephone number" in text
+
+    def test_pcl004_names_an_energy_ca_gov_web_address_among_what_it_saw(
+        self, tmp_path: Path
+    ) -> None:
+        """The label carries the Commission's website but never its name.
+
+        PCL004 asks whether the Energy Commission is named. When it is not,
+        the check reports what was present instead, and a real web address is
+        one of the things it can report. `TestAWebAddressIsNotAnEmailAddress`
+        holds the negative, that an email address must not be offered here.
+        Nothing held the positive, so the line that builds it never ran.
+        """
+        status, text = self._run(
+            tmp_path, "PCL004", "Questions about this label: visit www.energy.ca.gov for details.\n"
+        )
+        assert status is Status.DOES_NOT_CONFORM
+        assert "an energy.ca.gov web address" in text
