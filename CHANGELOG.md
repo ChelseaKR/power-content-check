@@ -93,6 +93,7 @@ recorded as one.
   is a pass the check was not entitled to on a document carrying no website
   address at all. Email addresses are now taken out of the text before the
   website matcher reads it. Conclusions about all ten cached published
+  labels are unchanged.
 - PCL012 (unspecified power annotation) required a closing parenthesis that
   the pattern never made optional, though the opening one was. An annotation
   reading "Unspecified Power - primarily fossil fuels" therefore matched
