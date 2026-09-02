@@ -295,6 +295,58 @@ class TestUnspecifiedPowerAnnotation:
         assert status is Status.DOES_NOT_CONFORM
         assert "hydrogen" in finding
 
+    # Section 1393.1(c)(7) requires the display to be annotated to identify a
+    # group. It prescribes no punctuation, unlike subdivision (l), whose
+    # footnote text is set out verbatim. A label that identifies the group
+    # after a dash, a colon or nothing at all has done what the subdivision
+    # says, and a deviation reported against it would be this tool enforcing a
+    # bracket no published source asks for.
+
+    @pytest.mark.parametrize(
+        "body",
+        [
+            "Unspecified Power - primarily fossil fuels 22%",
+            "Unspecified Power: primarily fossil fuels 22%",
+            "Unspecified Power primarily fossil fuels 22%",
+            "Unspecified Power (primarily fossil fuels 22%",
+            "Unspecified Power [primarily fossil fuels] 22%",
+        ],
+    )
+    def test_the_annotation_conforms_whatever_punctuation_carries_it(
+        self, tmp_path: Path, body: str
+    ) -> None:
+        assert self._run(tmp_path, body)[0] is Status.CONFORMS
+
+    def test_the_second_group_conforms_without_parentheses(self, tmp_path: Path) -> None:
+        status, _ = self._run(
+            tmp_path, "Unspecified Power - primarily renewables and zero-carbon resources 22%"
+        )
+        assert status is Status.CONFORMS
+
+    def test_an_invented_group_without_parentheses_names_what_it_saw(self, tmp_path: Path) -> None:
+        # Losing the bracket must not lose the distinction between an
+        # annotation naming the wrong group and no annotation at all.
+        status, finding = self._run(tmp_path, "Unspecified Power - primarily hydrogen 22%")
+        assert status is Status.DOES_NOT_CONFORM
+        assert "hydrogen" in finding
+
+    # Guards on the looseness that dropping the closing bracket could invite.
+    # Both hold before and after the change: the group name has to be what
+    # follows "primarily", not merely something that appears later on the page.
+
+    @pytest.mark.parametrize(
+        "body",
+        [
+            "Unspecified Power - primarily imported power from fossil fuels 22%",
+            "Unspecified Power - primarily hydrogen. Fossil fuels are also used. 22%",
+            "Unspecified Power 22% 0% 31%\nOur mix is primarily fossil fuels.",
+        ],
+    )
+    def test_a_group_name_further_down_the_line_does_not_satisfy_it(
+        self, tmp_path: Path, body: str
+    ) -> None:
+        assert self._run(tmp_path, body)[0] is Status.DOES_NOT_CONFORM
+
 
 class TestDisplayedTotals:
     def _run(self, tmp_path: Path, body: str) -> tuple[Status, str]:
@@ -321,36 +373,6 @@ class TestDisplayedTotals:
     def test_a_decimal_hundred_conforms(self, tmp_path: Path) -> None:
         status, _ = self._run(tmp_path, "Total 100.0% 100.0%")
         assert status is Status.CONFORMS
-
-    # _PERCENT places no limit on the digits after the point, and a double
-    # cannot hold twenty of them. Read as a float, a displayed total that is
-    # not one hundred rounds to exactly 100.0 and the check reports a pass it
-    # is not entitled to. Read as a decimal, the comparison is against the
-    # figure the label displays.
-
-    @pytest.mark.parametrize(
-        "displayed",
-        ["99.999999999999999999", "100.000000000000000001", "99.99999999999999999999999"],
-    )
-    def test_a_total_that_only_rounds_to_one_hundred_does_not_conform(
-        self, tmp_path: Path, displayed: str
-    ) -> None:
-        status, finding = self._run(tmp_path, f"Total {displayed}%")
-        assert status is Status.DOES_NOT_CONFORM
-        assert displayed in finding
-
-    # Positive controls. Decimal compares by value, not by representation, so
-    # the renderings of one hundred that a label may carry still conform, and
-    # a whole-number deviation is still named by its displayed value.
-
-    @pytest.mark.parametrize("displayed", ["100", "100.0", "100.00", "100.000000000000000000"])
-    def test_every_rendering_of_one_hundred_conforms(self, tmp_path: Path, displayed: str) -> None:
-        assert self._run(tmp_path, f"Total {displayed}%")[0] is Status.CONFORMS
-
-    def test_a_whole_number_deviation_is_still_named(self, tmp_path: Path) -> None:
-        status, finding = self._run(tmp_path, "Total 97%")
-        assert status is Status.DOES_NOT_CONFORM
-        assert "97" in finding
 
     def test_multiple_total_rows_flags_deviation_in_later_row(self, tmp_path: Path) -> None:
         body = (
@@ -383,6 +405,36 @@ class TestDisplayedTotals:
         assert "total 99% 97%" in finding
         assert "total 100% 100%" not in finding
 
+    # _PERCENT places no limit on the digits after the point, and a double
+    # cannot hold twenty of them. Read as a float, a displayed total that is
+    # not one hundred rounds to exactly 100.0 and the check reports a pass it
+    # is not entitled to. Read as a decimal, the comparison is against the
+    # figure the label displays.
+
+    @pytest.mark.parametrize(
+        "displayed",
+        ["99.999999999999999999", "100.000000000000000001", "99.99999999999999999999999"],
+    )
+    def test_a_total_that_only_rounds_to_one_hundred_does_not_conform(
+        self, tmp_path: Path, displayed: str
+    ) -> None:
+        status, finding = self._run(tmp_path, f"Total {displayed}%")
+        assert status is Status.DOES_NOT_CONFORM
+        assert displayed in finding
+
+    # Positive controls. Decimal compares by value, not by representation, so
+    # the renderings of one hundred that a label may carry still conform, and
+    # a whole-number deviation is still named by its displayed value.
+
+    @pytest.mark.parametrize("displayed", ["100", "100.0", "100.00", "100.000000000000000000"])
+    def test_every_rendering_of_one_hundred_conforms(self, tmp_path: Path, displayed: str) -> None:
+        assert self._run(tmp_path, f"Total {displayed}%")[0] is Status.CONFORMS
+
+    def test_a_whole_number_deviation_is_still_named(self, tmp_path: Path) -> None:
+        status, finding = self._run(tmp_path, "Total 97%")
+        assert status is Status.DOES_NOT_CONFORM
+        assert "97" in finding
+
 
 class TestGhgUnits:
     def _run(self, tmp_path: Path, body: str) -> tuple[Status, str]:
@@ -412,27 +464,13 @@ class TestGhgUnits:
         assert "CO2e" in finding
 
 
-def _arabic_indic(text: str) -> str:
-    """Rewrite ASCII digits as ARABIC-INDIC DIGIT ZERO through NINE.
+class TestAWebAddressIsNotAnEmailAddress:
+    """An email address is not a website address, and must not satisfy one.
 
-    Built from the code point rather than written as literals, so this file
-    stays ASCII and the linter's ambiguous-character rule does not have to be
-    silenced to let a test in.
-    """
-    return "".join(chr(0x0660 + int(c)) if c in "0123456789" else c for c in text)
-
-
-class TestDigitsTheToolCanActuallyRead:
-    r"""A pattern must not match digits the value derivation cannot read.
-
-    ``\d`` matches 680 characters, of which ten are ASCII. Everything
-    downstream of these patterns is ASCII only: ``_phones`` strips
-    ``[^0-9]``, a matched percentage is converted for comparison, and a
-    matched year is printed as the data year. Where the pattern is wider than
-    the derivation, the tool reports a number it never read, and in PCL002
-    that was a pass: an Arabic-Indic telephone number reduced to the empty
-    string, which then counted as one of the two distinct numbers section
-    1393.1(c)(4) lists.
+    Section 1393.1(c)(4) lists a website address for the retail supplier and a
+    website address for the Energy Commission. A label whose only contact is an
+    email address carries neither, and a check that read the domain half of an
+    address as a website would report CONFORMS on a document that deviates.
     """
 
     def _doc(self, tmp_path: Path, body: str) -> LabelDocument:
@@ -448,7 +486,202 @@ class TestDigitsTheToolCanActuallyRead:
         run = BY_ID[check_id].run
         assert run is not None
         result = run(self._doc(tmp_path, body), CheckContext())
-        return result.status, result.finding
+        return result.status, (result.detail or "") + " " + result.finding
+
+    def test_a_supplier_email_alone_does_not_satisfy_pcl003(self, tmp_path: Path) -> None:
+        status, _ = self._run(
+            tmp_path, "PCL003", "Example Utility\nbilling@example-utility.example.com"
+        )
+        assert status is Status.DOES_NOT_CONFORM
+
+    def test_an_energy_ca_gov_email_alone_does_not_satisfy_pcl005(self, tmp_path: Path) -> None:
+        status, _ = self._run(tmp_path, "PCL005", "Questions about this label: pscd@energy.ca.gov")
+        assert status is Status.DOES_NOT_CONFORM
+
+    def test_pcl004_does_not_offer_an_email_as_the_web_address_it_saw(self, tmp_path: Path) -> None:
+        status, text = self._run(tmp_path, "PCL004", "Write to the CEC at pscd@energy.ca.gov")
+        assert status is Status.DOES_NOT_CONFORM
+        assert "an energy.ca.gov web address" not in text
+
+    def test_the_scrub_removes_only_the_address(self, tmp_path: Path) -> None:
+        from power_content_check.checks import _domains
+
+        document = self._doc(
+            tmp_path,
+            "Email billing@example-utility.example.com or visit www.example-utility.example.com",
+        )
+        assert _domains(document) == ["www.example-utility.example.com"]
+
+    # Positive controls. Both hold before and after the change, and guard the
+    # opposite error: a scrub that took a real website out with the email.
+
+    def test_a_website_alone_still_satisfies_pcl003(self, tmp_path: Path) -> None:
+        status, _ = self._run(
+            tmp_path, "PCL003", "Example Utility\nwww.example-utility.example.com"
+        )
+        assert status is Status.CONFORMS
+
+    def test_a_website_beside_an_email_still_satisfies_pcl003(self, tmp_path: Path) -> None:
+        status, _ = self._run(
+            tmp_path,
+            "PCL003",
+            "Email billing@example-utility.example.com or visit www.example-utility.example.com",
+        )
+        assert status is Status.CONFORMS
+
+
+class TestTheDeviationBranchesNothingHadReached:
+    """Failure paths that no test in this suite ever ran.
+
+    Every implemented check has a reachable `_bad` call, so reading the source
+    tells you nothing is missing. Running the suite with `_bad` instrumented
+    tells you something else: PCL008 and PCL009 never reported
+    DOES_NOT_CONFORM once across all 438 tests. Both are only ever asserted to
+    CONFORM, by `TestConformingLabel` over the clean fixture and by
+    `TestDeficientLabel.test_what_is_present_is_not_flagged` over the
+    deficient one, which carries the very text they look for.
+
+    So the whole deviation half of both checks was unheld. Rewriting either
+    `return _bad(...)` as `return _ok(...)`, which makes the check report
+    conformance on a label missing the thing it exists to look for, left all
+    438 tests passing and total coverage unchanged at 96.65 percent. Neither
+    the suite nor the coverage floor could see it, because the lines were
+    never executed either way: they were exactly two of the four uncovered
+    statements in `checks.py`, at lines 340 and 352.
+
+    A check whose deviation branch nothing reaches is a check that cannot
+    fail, which is the defect class the rest of this pass is about, sitting
+    inside the checks themselves rather than in the harness around them.
+
+    The other two uncovered statements are here for the same reason: PCL002's
+    "exactly one number" case, which is a distinct deviation from its
+    "no number" case, and the line in PCL004 that reports an energy.ca.gov
+    web address among what was seen instead. Both belong to checks that can
+    still fail by other routes, so they are narrower gaps, but they are the
+    same shape and this is the file they belong in.
+    """
+
+    def _doc(self, tmp_path: Path, body: str) -> LabelDocument:
+        path = tmp_path / "synthetic.txt"
+        path.write_text(body + "\n" + ("filler line for length. " * 20))
+        document = extract(path)
+        assert isinstance(document, LabelDocument)
+        return document
+
+    def _run(self, tmp_path: Path, check_id: str, body: str) -> tuple[Status, str]:
+        from power_content_check.checks import BY_ID
+
+        run = BY_ID[check_id].run
+        assert run is not None
+        result = run(self._doc(tmp_path, body), CheckContext())
+        return result.status, (result.detail or "") + " " + result.finding
+
+    def test_pcl008_deviates_when_rps_eligible_renewables_is_not_named(
+        self, tmp_path: Path
+    ) -> None:
+        """The subcategory of section 1393.1(c)(2)(A) is absent."""
+        status, text = self._run(
+            tmp_path,
+            "PCL008",
+            "Renewables and Zero-Carbon Resources\nSolar 20%\nWind 15%\nFossil Fuels\n",
+        )
+        assert status is Status.DOES_NOT_CONFORM
+        assert "RPS-eligible renewables do not appear" in text
+
+    def test_pcl008_conforms_when_it_is_named(self, tmp_path: Path) -> None:
+        """The positive control, so the test above is not passing on a document
+        the extractor could not read."""
+        status, _ = self._run(
+            tmp_path,
+            "PCL008",
+            "Renewables and Zero-Carbon Resources\nRPS-Eligible Renewables 30%\n",
+        )
+        assert status is Status.CONFORMS
+
+    def test_pcl009_deviates_when_the_fossil_fuels_group_is_absent(self, tmp_path: Path) -> None:
+        """The group of section 1393.1(c)(2)(B) is absent."""
+        status, text = self._run(
+            tmp_path,
+            "PCL009",
+            "Renewables and Zero-Carbon Resources\nRPS-Eligible Renewables 30%\nLarge Hydro 10%\n",
+        )
+        assert status is Status.DOES_NOT_CONFORM
+        assert "Fossil Fuels" in text
+
+    def test_pcl009_conforms_when_the_group_appears(self, tmp_path: Path) -> None:
+        """The positive control."""
+        status, _ = self._run(tmp_path, "PCL009", "Fossil Fuels\nNatural Gas 40%\nCoal 5%\n")
+        assert status is Status.CONFORMS
+
+    def test_pcl002_deviates_on_exactly_one_telephone_number(self, tmp_path: Path) -> None:
+        """One number is its own deviation, not the same one as none.
+
+        Section 1393.1(c)(4) lists a number for the retail supplier and a
+        number for the Energy Commission. A label carrying one of the two is
+        the case this branch reports, and it says so in different words than
+        the no-number branch, which is the branch the deficient fixture hits.
+        """
+        status, text = self._run(
+            tmp_path, "PCL002", "Example Utility\nCustomer service: (800) 555-0101\n"
+        )
+        assert status is Status.DOES_NOT_CONFORM
+        assert "Only one telephone number" in text
+
+    def test_pcl004_names_an_energy_ca_gov_web_address_among_what_it_saw(
+        self, tmp_path: Path
+    ) -> None:
+        """The label carries the Commission's website but never its name.
+
+        PCL004 asks whether the Energy Commission is named. When it is not,
+        the check reports what was present instead, and a real web address is
+        one of the things it can report. `TestAWebAddressIsNotAnEmailAddress`
+        holds the negative, that an email address must not be offered here.
+        Nothing held the positive, so the line that builds it never ran.
+        """
+        status, text = self._run(
+            tmp_path, "PCL004", "Questions about this label: visit www.energy.ca.gov for details.\n"
+        )
+        assert status is Status.DOES_NOT_CONFORM
+        assert "an energy.ca.gov web address" in text
+
+
+def _arabic_indic(text: str) -> str:
+    """Rewrite ASCII digits as ARABIC-INDIC DIGIT ZERO through NINE.
+
+    Built from the code point rather than written as literals, so this file
+    stays ASCII and the linter's ambiguous-character rule does not have to be
+    silenced to let a test in.
+    """
+    return "".join(chr(0x0660 + int(c)) if c in "0123456789" else c for c in text)
+
+
+class TestDigitsTheToolCanActuallyRead:
+    """A pattern must not match digits the value derivation cannot read.
+
+    The Unicode digit class escape matches 680 characters, of which ten are
+    ASCII. Everything downstream of these patterns is ASCII only: ``_phones``
+    strips everything outside ``0-9``, a matched percentage is converted for
+    comparison, and a matched year is printed as the data year. Where the
+    pattern is wider than the derivation, the tool reports a number it never
+    read, and in PCL002 that was a pass: an Arabic-Indic telephone number
+    reduced to the empty string, which then counted as one of the two distinct
+    numbers section 1393.1(c)(4) lists.
+    """
+
+    def _doc(self, tmp_path: Path, body: str) -> LabelDocument:
+        path = tmp_path / "synthetic.txt"
+        path.write_text(body + "\n" + ("filler line for length. " * 20))
+        document = extract(path)
+        assert isinstance(document, LabelDocument)
+        return document
+
+    def _run(self, tmp_path: Path, check_id: str, body: str) -> tuple[Status, str]:
+        from power_content_check.checks import BY_ID
+
+        run = BY_ID[check_id].run
+        assert run is not None
+        result = run(self._doc(tmp_path, body), CheckContext())
+        return result.status, (result.detail or "") + " " + result.finding
 
     def test_a_number_whose_digits_were_discarded_is_not_a_second_number(
         self, tmp_path: Path

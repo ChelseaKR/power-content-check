@@ -82,10 +82,19 @@ def main() -> int:
         return 64
     recorded = json.loads(BASELINE.read_text())
 
+    # The comparison happens over the intersection, so the intersection is the
+    # denominator and it has to be stated. Reporting a pass over an empty one
+    # is the shape this script exists to catch elsewhere: a cache replaced
+    # wholesale used to print "N documents conclude exactly as recorded",
+    # naming a count of documents not one of which had been compared, and
+    # exit 0. Three pull requests quote this line as evidence that no
+    # conclusion about a published label moved, so the sentence has to be
+    # true.
+    compared = sorted(set(current) & set(recorded))
     changed = {
-        digest: (recorded[digest], fp)
-        for digest, fp in current.items()
-        if digest in recorded and recorded[digest] != fp
+        digest: (recorded[digest], current[digest])
+        for digest in compared
+        if recorded[digest] != current[digest]
     }
     unseen = sorted(set(recorded) - set(current))
     added = sorted(set(current) - set(recorded))
@@ -97,6 +106,14 @@ def main() -> int:
     if added:
         print(f"{len(added)} documents are new to the cache; rerun 'record' to adopt them")
 
+    if not compared:
+        print(
+            f"none of the {len(current)} documents in the cache appear in the baseline, "
+            "so nothing was compared and this run proves nothing. If the cache was "
+            "replaced on purpose, rerun 'record' and say so."
+        )
+        return 1
+
     if changed:
         print(f"{len(changed)} documents now conclude differently than the baseline says:")
         for digest, (old, new) in list(changed.items())[:10]:
@@ -107,7 +124,7 @@ def main() -> int:
             " and rerun 'record'."
         )
         return 1
-    print(f"{len(current)} documents conclude exactly as recorded.")
+    print(f"{len(compared)} documents conclude exactly as recorded.")
     return 0
 
 

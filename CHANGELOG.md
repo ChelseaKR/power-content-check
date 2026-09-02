@@ -13,6 +13,29 @@ recorded as one.
 
 ### Added
 
+- Track J on the roadmap: auditing implemented checks for the ability to
+  fail. A registered check that enforces nothing announces itself in every
+  report; an implemented check that cannot reach its deviation branch does
+  not, and nothing in the catalog, the coverage number or the gate tells it
+  apart from a check that works. It is also the only track that waits on
+  nothing outside the repository. The entry records the method and the four
+  defects of 27 August 2026 that prompted it.
+- `docs/AUDITING.md`, an entry point for someone verifying this tool rather
+  than using it: how to audit a check against the source it cites, how to
+  reproduce a finding by hand, what a status means and why not evaluated can
+  never become a pass, what the extraction basis covers and does not, what
+  the tool refuses to conclude, how to audit the gaps rather than only the
+  checks, how to catch an implemented check that cannot fail, and where the
+  calibration record lives. It links out to the ADR that decided each
+  question rather than restating it, because a restatement drifts from the
+  decision and the drift is invisible.
+- `tests/test_auditing_doc.py`, which pins that document to the tool rather
+  than proofreading it. The enumerations it prints are compared against the
+  model, every relative link and check identifier and quoted repository path
+  is resolved, and the commands it gives an auditor are executed. A previous
+  attempt at this document listed five result statuses where the model
+  defines three, which is what these tests make impossible to repeat.
+
 - Five checks registered by a completeness sweep that read sections 1391
   through 1394 and PUC 398.4 end to end on 22 August 2026 and diffed every
   content-shaped obligation against the catalog. All five enforce nothing:
@@ -63,16 +86,26 @@ recorded as one.
 
 ### Fixed
 
-- PCL018 (displayed column totals) compared displayed percentages as doubles,
-  and `float("99.999999999999999999") == 100.0` is True, so a displayed total
-  that is not one hundred was reported as a pass. `_PERCENT` places no limit
-  on the digits after the point, so nothing bounded the input to what a
-  double can hold. The figures are read as decimals now, compared by value
-  rather than by representation, so 100, 100.0 and 100.00 all still conform
-  and a total that only rounds to one hundred is reported with the figure the
-  label displays. Adversarial rather than observed: every published label
-  read for this project displays whole percentages.
-
+- PCL003, PCL004 and PCL005 read the domain half of an email address as a
+  website address, because `_DOMAIN` ran over the raw text and an address's
+  domain is domain shaped. A label whose only contact was
+  `billing@example-utility.example.com` reported CONFORMS on PCL003, which
+  is a pass the check was not entitled to on a document carrying no website
+  address at all. Email addresses are now taken out of the text before the
+  website matcher reads it. Conclusions about all ten cached published
+  labels are unchanged.
+- PCL012 (unspecified power annotation) required a closing parenthesis that
+  the pattern never made optional, though the opening one was. An annotation
+  reading "Unspecified Power - primarily fossil fuels" therefore matched
+  nothing and fell through to the "not annotated anywhere" branch, which is
+  a deviation reported against a document that says exactly what section
+  1393.1(c)(7) asks it to say. The subdivision prescribes no punctuation,
+  unlike subdivision (l), so the bracket was a rule this tool wrote. The
+  annotation is now read after any punctuation or none, and the group name
+  has to be what follows "primarily" rather than something appearing later
+  on the line, so an annotation naming the wrong group is still told apart
+  from no annotation at all. Conclusions about all ten cached published
+  labels are unchanged.
 - Digit classes across the package are written `[0-9]` rather than as the
   Unicode digit class escape, which matches 680 characters where ASCII has
   ten. Everything downstream of these patterns reads ASCII only, so the
@@ -87,7 +120,49 @@ recorded as one.
   PCL018 not evaluated instead of conforming. A test in
   `tests/test_repo_hygiene.py` enforces the rule across `src` and `scripts`.
   Conclusions about all ten cached published labels are unchanged.
+- PCL018 (displayed column totals) compared displayed percentages as doubles,
+  and `float("99.999999999999999999") == 100.0` is True, so a displayed total
+  that is not one hundred was reported as a pass. `_PERCENT` places no limit
+  on the digits after the point, so nothing bounded the input to what a
+  double can hold. The figures are read as decimals now, compared by value
+  rather than by representation, so 100, 100.0 and 100.00 all still conform
+  and a total that only rounds to one hundred is reported with the figure the
+  label displays. Adversarial rather than observed: every published label
+  read for this project displays whole percentages.
 
+- A usage error now exits 64, which is the code the tool has always
+  published. `ExitCode.USAGE_ERROR`, the README's exit code table and the
+  epilog the CLI prints in its own `--help` all said 64 while argparse's
+  default of 2 was what a caller actually received, and 2 is the code that
+  means "at least one check could not be evaluated". The two tests covering
+  usage errors asserted 2, so they pinned the defect rather than caught it.
+- `scripts/check_regressions.py compare` reported a pass over an empty
+  comparison. It diffs the intersection of the cache and the baseline; when
+  that intersection was empty it printed "N documents conclude exactly as
+  recorded", with N the size of the cache rather than the number compared,
+  and exited 0. An empty comparison now says so and exits 1, and the sentence
+  reports the number of documents actually compared.
+- Guards that could not fail, repaired and given break tests. The hostile
+  input suite asserted that a damaged file did not conform on every one of
+  the thirty five registered checks, which the seventeen unimplemented ones
+  made unreachable; it now asserts, as membership rather than as a count,
+  that a check enforcing nothing never reports CONFORMS. Both of its mutation
+  loops skip unreadable mutants and would have passed having asserted nothing
+  if extraction ever refused all of them, so both now assert a floor on how
+  many were readable. `MUTATIONS = 120` sat unused in that module beside a
+  function returning 23.
+- The workflow rule against silencing a security gate only fired when the
+  mute and the tool name sat on the same line, so the ordinary form, a
+  `continue-on-error: true` on the line below the step's `run:`, was
+  invisible to it. It now also refuses any muting construct anywhere in a
+  workflow that runs a security tool, and asserts that such a workflow
+  exists. The lockfile rule forbade `uv sync --frozen` without ever requiring
+  `--locked`, so a bare `uv sync` passed it.
+- The repository rules read the `Makefile` for the first time. Every one of
+  them selected files by suffix, which silently excluded the file the gate
+  itself is written in: `make verify` could have had make's `-` ignore
+  errors prefix put on its bandit line, or lost its dependency on the
+  security target, with nothing in the suite able to notice.
 - PCL018 (displayed column totals) pooled every matching total row's values
   into one undifferentiated list, so a deviation could no longer be traced
   to the specific row that produced it once more than one total row was
@@ -95,6 +170,31 @@ recorded as one.
   the exact row text it came from.
 
 ### Changed
+
+- The prose caught up with the calibration set. Widening it to thirty four
+  labels updated the count in `docs/sources.md` but left the summary
+  paragraph six lines below still describing the twenty four, and left the
+  same figure standing in the README, in the roadmap's Track B and in
+  PCL021's registered reason. Those now say thirty four, which is what the
+  record supports: the batch of ten is recorded as holding the standing
+  result, and the absence of a telephone number is one of the two deviations
+  that result is made of. Four observations are deliberately left at twenty
+  four, with a paragraph in `docs/sources.md` saying which and why: the
+  per-column sums behind PCL025, the search for a section 1393.1(c)(6)
+  statement behind PCL029, and the single-label observations noted against
+  PCL020 and PCL034 are separate measurements rather than consequences of
+  the standing result, and the batch of ten was not remeasured for them.
+- The completeness sweep took the count of registered checks that enforce
+  nothing from twelve to seventeen, and three places still said twelve: the
+  calibration record, the roadmap's account of the exit-code shadowing, and
+  the docstring on the precedence tests. The shadowing itself is unchanged;
+  only the number was wrong.
+- The roadmap's Track A pointed the trigger derivation at `docs/adr/0010`,
+  which the schema version has held since Track F landed. Track I already
+  recorded that it takes 0013. Track A now says the same.
+- Track G's `--version` flag is marked landed, because it is: it needed
+  nothing from PyPI, and only the PyPI registration in that track is
+  actually waiting on anything.
 
 - The calibration set went from twenty four published 2024 labels to thirty
   four, in two capped fetch invocations, chosen for supplier types the set

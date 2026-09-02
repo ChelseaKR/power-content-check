@@ -41,7 +41,7 @@ Steps, in order:
 
 1. **Read the first published data year 2025 labels** through
    `scripts/fetch_examples.py`, one at a time, under the usual limits.
-2. **Settle the trigger question in an ADR** (`docs/adr/0010`). Either the
+2. **Settle the trigger question in an ADR** (`docs/adr/0013`). Either the
    total-power-content section appears on labels whose title says 2026, or
    it does not, and whichever way the issued renderings answer it becomes
    the documented basis for the derivation. If the renderings answer it
@@ -63,7 +63,7 @@ a document that does not exist yet.
 **Status: ongoing, no blocker. Thirty four of ninety one read as of
 22 August 2026.**
 
-Twenty four of the ninety one published 2024 labels have been read. Each
+Thirty four of the ninety one published 2024 labels have been read. Each
 widening so far paid for itself: the set going from three to eight exposed
 two places where the tool reported an element absent from a label that
 carries it, and both fixes are now core behavior (`docs/adr/0006`,
@@ -202,7 +202,7 @@ like the check identifiers already are.
    written down: `catalog --json` emits the same `CheckSpec` dicts the
    reports carry.
 4. **Exit-code contract.** Landed. The precedence combinations are pinned
-   explicitly, including the shadowing that holds today: because twelve
+   explicitly, including the shadowing that holds today: because seventeen
    registered checks always report as not evaluated, code 2 beats code 1 on
    every run over a readable document and exit 1 is unreachable until a
    conditional check implements. Holding that in tests means implementing a
@@ -223,7 +223,8 @@ since the tool gains no network behavior from being installable.
    constrained job behind the same gate, not a new pipeline.
 2. **Build provenance attestation** on the published artifacts.
 3. **A `--version` flag**, which a packaged CLI needs and a git checkout
-   never did.
+   never did. Landed: `power-content-check --version` prints the packaged
+   version, and it needed nothing from PyPI to be useful.
 4. **Python 3.14 support.** Landed: the full gate passes on 3.14 with the
    locked dependency set unchanged, so the CI matrix and the classifiers
    now declare it.
@@ -270,16 +271,71 @@ that publishes behind the existing release gate follows that, not before.
    0013 when Track A lands, unless another decision records first; the
    second-ruleset ADR when triggered (Track C). Numbers go to whichever
    decision lands, and this list moves in the same commit.
-3. **Auditor-facing documentation**: a short document aimed at someone
-   verifying this tool rather than using it - how to reproduce a finding
-   by hand, how to audit the catalog against the sources, what the tool
-   refuses to conclude and why. Much of it exists across the ADRs and
-   `docs/sources.md`; it wants collecting under one entry point.
+3. **Auditor-facing documentation.** Landed as `docs/AUDITING.md`: how to
+   audit a check against the source it cites, how to reproduce a finding by
+   hand, what a status means and why not evaluated can never become a pass,
+   what the extraction basis covers, what the tool refuses to conclude, how
+   to audit the gaps, how to catch an implemented check that cannot fail,
+   and where the calibration record lives. It links out to the ADR that
+   decided each question rather than restating it, because a restatement
+   drifts and the drift is invisible. Its factual claims are pinned by
+   `tests/test_auditing_doc.py` rather than proofread: the enumerations it
+   prints are compared against the model, every link and check identifier
+   and quoted path is resolved, and the commands it gives are executed.
 4. **Outreach, with the affiliation line carried intact.** The tool is
    useful to researchers and to suppliers checking documents they were
    issued. Any sharing of it repeats, verbatim, the disclaimer that this
    project is not affiliated with or endorsed by the Energy Commission,
    and never summarizes findings about named suppliers.
+
+## Track J - Proving an implemented check can still fail
+
+**Status: continuous, and the only track here that never waits on anything.**
+
+Every other track is gated on something outside the repository: a document
+the Energy Commission has not published, an amendment that has not been
+made, an account that has not been registered. This one is gated on nothing,
+because its subject is the eighteen checks that are already implemented.
+
+A registered check that enforces nothing is visible: it says so in every
+report, and `tests/test_fail_closed.py` holds it. An implemented check that
+cannot reach its deviation branch is invisible. It reports `[  ok  ]` on
+every document anyone tries, including the documents it exists to notice,
+and nothing in the catalog, the coverage number or the gate distinguishes it
+from a check that works. The one thing that does distinguish them is a test
+that was watched failing before the code that makes it pass was written.
+
+Three of the four defects fixed on 27 August 2026 were of this kind, and two
+were passes the check was not entitled to give:
+
+- PCL003 and PCL005 read the domain half of an email address as a website
+  address, so a label carrying no website address at all conformed.
+- PCL002 counted a telephone number whose digits the ASCII-only strip had
+  discarded, so the empty string counted as one of the two numbers section
+  1393.1(c)(4) lists.
+- PCL018 compared displayed totals as doubles, so a total that only rounded
+  to one hundred conformed.
+
+The fourth was the inverse and is worth naming beside them, because the same
+audit finds both: PCL012 required a closing bracket that section 1393.1(c)(7)
+nowhere prescribes, and reported a deviation against a document that says
+what the subdivision asks it to say.
+
+Method, when this runs again:
+
+1. **Take one implemented check and construct the document it should
+   deviate on**, from the cited text rather than from the code, so that the
+   construction cannot inherit the code's own assumption.
+2. **Watch the test fail against the current tree** before writing any fix.
+   A test that has never been red is evidence of nothing.
+3. **Carry a positive control** that passes in both states, so that a fix
+   which merely widens or narrows everything is caught.
+4. **Run `scripts/check_regressions.py compare`** where the cache is
+   present, so a change that moves a conclusion about a real published label
+   surfaces before it is pushed rather than after.
+
+This track has no completion condition. It reruns whenever a check is added
+or a matcher is touched, and its record is the changelog.
 
 ---
 
@@ -292,6 +348,7 @@ that publishes behind the existing release gate follows that, not before.
 | After 2026-10-01, as data year 2025 labels publish | Trigger ADR, then PCL023 and PCL024; new-vintage calibration begins; watch for anything that unblocks PCL029 | A, B |
 | On any regulation amendment | Second-ruleset ADR and registry | C |
 | Continuously | Calibration batches toward ninety one; roadmap and ADR upkeep | B, I |
+| Continuously, gated on nothing | Auditing implemented checks for the ability to fail | J |
 
 Tracks F, G and H are ordered before Track A's implementation phase on
 purpose: the contract tests, the fingerprint harness and the widened

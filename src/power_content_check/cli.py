@@ -10,6 +10,7 @@ import argparse
 import sys
 from collections.abc import Sequence
 from pathlib import Path
+from typing import NoReturn
 
 from . import __version__
 from .checks import CheckContext
@@ -37,8 +38,32 @@ the report rather than dropped in silence.
 """
 
 
+class _Parser(argparse.ArgumentParser):
+    """A parser that exits with the usage code this tool publishes.
+
+    argparse exits 2 on a usage error. This tool documents 64 for that case in
+    three places: :data:`ExitCode.USAGE_ERROR`, the exit code table in the
+    README, and the epilog above, which the tool prints in its own ``--help``.
+    Every one of those said 64 while the program returned 2.
+
+    A tool that documents one exit code and returns another is telling a
+    caller something untrue, and a caller who reads the table cannot tell a
+    usage error from "at least one check could not be evaluated". So the
+    parser is brought to the documented code, rather than the documentation
+    down to argparse's default. 64 is EX_USAGE from sysexits.h, which is the
+    convention ``scripts/check_regressions.py`` already follows.
+
+    Only ``error`` is overridden. ``--help`` and ``--version`` exit through
+    ``parser.exit(0)`` without passing through here, and still exit 0.
+    """
+
+    def error(self, message: str) -> NoReturn:
+        self.print_usage(sys.stderr)
+        self.exit(ExitCode.USAGE_ERROR, f"{self.prog}: error: {message}\n")
+
+
 def build_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(
+    parser = _Parser(
         prog="power-content-check",
         description=(
             "Check a California Power Content Label against the published label "
