@@ -32,6 +32,7 @@ from __future__ import annotations
 import re
 from collections.abc import Callable
 from dataclasses import dataclass
+from decimal import Decimal
 
 from .citations import issued_format, reg
 from .extract import LabelDocument
@@ -609,16 +610,31 @@ def _pcl018(doc: LabelDocument, ctx: CheckContext) -> CheckResult:
     # test_multiple_conforming_total_rows_conforms): a repeated line is not
     # assumed to be a duplicate-extraction artifact of the same row, since a
     # label can genuinely carry more than one identically-formatted total.
-    rows: list[tuple[str, list[float]]] = []
+    #
+    # The figures are read as decimals, not as doubles. _PERCENT places no
+    # limit on the digits after the point, and a double cannot hold twenty of
+    # them: float("99.999999999999999999") == 100.0 is True, so a displayed
+    # total that is not one hundred would be reported as a pass. Decimal
+    # compares the figure the label displays, and by value rather than by
+    # representation, so 100, 100.0 and 100.00 all still conform.
+    #
+    # There is deliberately no exception handling around the conversion.
+    # _PERCENT matches [0-9]{1,3} with an optional fractional part, so what
+    # reaches Decimal is always a valid decimal literal and InvalidOperation
+    # cannot be raised here. Catching it would be unreachable code that, if it
+    # ever did run, would drop a total row's figure and let the check conclude
+    # from the ones that remained, which is the opposite of what this file
+    # promises.
+    rows: list[tuple[str, list[Decimal]]] = []
     for line in doc.normalized_lines:
         match = _TOTAL_ROW.match(_row_label(line))
         if not match:
             continue
         row_text = match.group(0)
-        values = [float(v.rstrip("% ").strip()) for v in re.findall(_PERCENT, match.group(1))]
+        values = [Decimal(v.rstrip("% ").strip()) for v in re.findall(_PERCENT, match.group(1))]
         rows.append((row_text, values))
     if rows:
-        deviations = [(row, v) for row, values in rows for v in values if v != 100.0]
+        deviations = [(row, v) for row, values in rows for v in values if v != 100]
         if deviations:
             cited = "; ".join(f"{row!r} has {v}" for row, v in deviations)
             return _bad(

@@ -120,6 +120,15 @@ recorded as one.
   PCL018 not evaluated instead of conforming. A test in
   `tests/test_repo_hygiene.py` enforces the rule across `src` and `scripts`.
   Conclusions about all ten cached published labels are unchanged.
+- PCL018 (displayed column totals) compared displayed percentages as doubles,
+  and `float("99.999999999999999999") == 100.0` is True, so a displayed total
+  that is not one hundred was reported as a pass. `_PERCENT` places no limit
+  on the digits after the point, so nothing bounded the input to what a
+  double can hold. The figures are read as decimals now, compared by value
+  rather than by representation, so 100, 100.0 and 100.00 all still conform
+  and a total that only rounds to one hundred is reported with the figure the
+  label displays. Adversarial rather than observed: every published label
+  read for this project displays whole percentages.
 
 - A usage error now exits 64, which is the code the tool has always
   published. `ExitCode.USAGE_ERROR`, the README's exit code table and the
