@@ -41,18 +41,72 @@ class TestExitCodes:
     def test_negative_threshold_is_a_usage_error(self) -> None:
         with pytest.raises(SystemExit) as excinfo:
             main(["check", "--min-text-chars", "-1", "x.pdf"])
-        assert excinfo.value.code == 2
+        assert excinfo.value.code == ExitCode.USAGE_ERROR
+
+
+class TestTheUsageCodeIsTheOneThatIsPublished:
+    """The tool must return the usage code it prints in its own help.
+
+    ExitCode.USAGE_ERROR, the README's exit code table and the CLI epilog all
+    publish 64. argparse's default is 2, so before this was held the tool
+    documented one code in three places and returned another, and the tests
+    asserted the returned one, which pinned the defect instead of catching it.
+
+    Every route into a usage error is covered, because the override lives on
+    the parser class and the subparsers inherit it: get the class wrong on one
+    of them and only that route regresses.
+    """
+
+    @pytest.mark.parametrize(
+        ("argv", "why"),
+        [
+            ([], "no subcommand at all"),
+            (["check", "--min-text-chars", "-1", "x.pdf"], "a value the tool rejects"),
+            (["check", "--no-such-flag"], "an unknown option on a subcommand"),
+            (["--no-such-flag"], "an unknown option on the top level parser"),
+            (["no-such-command"], "an unknown subcommand"),
+        ],
+    )
+    def test_every_usage_error_exits_with_the_documented_code(
+        self, argv: list[str], why: str
+    ) -> None:
+        with pytest.raises(SystemExit) as excinfo:
+            main(argv)
+        assert excinfo.value.code == ExitCode.USAGE_ERROR, why
+
+    def test_the_readme_table_and_the_epilog_agree_with_the_enum(self) -> None:
+        """The three places that publish the number are held to one value."""
+        from power_content_check.cli import _EPILOG
+
+        readme = (Path(__file__).resolve().parent.parent / "README.md").read_text(encoding="utf-8")
+        assert f"| {ExitCode.USAGE_ERROR} | usage error |" in readme
+        assert f"  {ExitCode.USAGE_ERROR}  usage error" in _EPILOG
+
+    def test_help_and_version_are_not_usage_errors(
+        self, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        """The positive control. Only ``error`` was rerouted."""
+        for argv in (["--help"], ["--version"], ["check", "--help"]):
+            with pytest.raises(SystemExit) as excinfo:
+                main(argv)
+            assert excinfo.value.code == ExitCode.OK, argv
+            capsys.readouterr()
 
 
 class TestPrecedence:
     """Higher codes win. These pin the combinations callers actually hit.
 
     With the catalog as registered, a readable document always carries the
-    twelve checks that enforce nothing, so NOT_EVALUATED shadows
-    NONCONFORMANCE on every run over a readable document and code 1 is
-    unreachable until a conditional check implements. That is the documented
-    ordinary result, not a defect; these tests hold the shadowing on purpose,
-    so that implementing a conditional check surfaces here first.
+    checks that enforce nothing, so NOT_EVALUATED shadows NONCONFORMANCE on
+    every run over a readable document and code 1 is unreachable until every
+    one of them implements. That is the documented ordinary result, not a
+    defect; these tests hold the shadowing on purpose, so that implementing a
+    conditional check surfaces here first.
+
+    The count is deliberately not written out here. It was written out as
+    "twelve" and went stale at seventeen, and a number in a docstring that
+    nothing reads is a claim with no gate on it. test_registry.py pins the
+    count, in a place that fails when it moves.
     """
 
     def test_nothing_checked_beats_everything(
@@ -167,4 +221,4 @@ class TestNoCommand:
     def test_a_bare_invocation_is_a_usage_error(self) -> None:
         with pytest.raises(SystemExit) as excinfo:
             main([])
-        assert excinfo.value.code == 2
+        assert excinfo.value.code == ExitCode.USAGE_ERROR
