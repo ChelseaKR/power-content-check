@@ -384,6 +384,8 @@ def _pcl009(doc: LabelDocument, ctx: CheckContext) -> CheckResult:
 
 
 def _pcl010(doc: LabelDocument, ctx: CheckContext) -> CheckResult:
+    from .normalize import contains_ignoring_spaces
+
     text = doc.normalized
     if "greenhouse gas emissions intensity" not in text and "ghg emissions intensity" not in text:
         return _bad(
@@ -394,7 +396,12 @@ def _pcl010(doc: LabelDocument, ctx: CheckContext) -> CheckResult:
             "electricity portfolio to be disclosed.",
         )
     has_mass = re.search(r"\b(lbs|lb|pounds)\b", text) is not None
-    has_co2e = "co2e" in text
+    # "CO2e" is prescribed text, and the issued labels set its 2 as a subscript,
+    # which the extractor reports as a separate run. A raw substring here would
+    # make a fact about where pypdf put a space into a deviation reported
+    # against a named supplier. This is the same guarantee ADR 0006 gave the
+    # footnote checks; PCL010 compares a prescribed string too.
+    has_co2e = contains_ignoring_spaces(text, "CO2e")
     has_rate = re.search(r"per\s+megawatt\s+hour|/\s?mwh|per\s+mwh", text) is not None
     if has_mass and has_co2e and has_rate:
         return _ok(

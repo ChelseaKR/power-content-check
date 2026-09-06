@@ -54,8 +54,13 @@ one and refuses to decide the other.
 `normalize.contains_ignoring_spaces` compares a prescribed phrase against the
 document with every space removed on both sides. Where the extractor put its
 spaces is a fact about how the page was drawn, not about the words the document
-contains. The three footnote checks, PCL013 to PCL015, and the statewide
-rendering match in PCL016 use it. Like everything in `normalize`, it only
+contains. The three footnote checks, PCL013 to PCL015, the statewide
+rendering match in PCL016, and the `CO2e` unit test in PCL010 use it. The
+rule is the prescribed string, not the kind of element it sits in: PCL010
+cites section 1393.1(c)(3) requiring the figure in pounds of CO2e per
+megawatt hour, so `CO2e` is prescribed text and gets the same guarantee. It
+was added to this list on 6 September 2026, having been missed when this
+decision was first written. Like everything in `normalize`, it only
 widens matching, and it does not ignore intervening words: "CA Utility Power
 Mix Average" still does not match "CA Utility Average".
 
@@ -79,6 +84,12 @@ the two explanations apart.
 The implemented count is unchanged at eighteen. Nothing here added a check.
 Two checks stopped being wrong, which the count does not show, and which is the
 limitation of counting checks.
+
+Scoping the helper to a list of checks, rather than to a property of what is
+being compared, is how PCL010 came to be left out of it for three weeks. The
+list above is the enumeration, and the sentence beside it is the rule the
+enumeration is meant to follow; a check comparing a prescribed string that is
+not in the list is a defect in the list.
 
 Widening the calibration set is how both of these were found. Three labels
 agreed with each other and were wrong together about nothing; eight labels
