@@ -131,9 +131,10 @@ available explanation. Where either count cannot be taken, or where an inline
 image is present or cannot be ruled out, it says that instead of printing
 zero.
 
-`scripts/inspect_artwork.py` prints every image a PDF declares and the size at
-which the page draws it, so you can judge whether a missing element could
-plausibly be inside one. Where any doubt remains, render the page and look at
+`scripts/inspect_artwork.py` prints every image a PDF declares, including those
+reached through a Form XObject, and the size at which the page draws it, with
+the form's own transform composed in. That is the same set the checker counts,
+so you can judge whether a missing element could plausibly be inside one. Where any doubt remains, render the page and look at
 it. `docs/sources.md` records that being done for the first eight published
 labels this project calibrated against, and what it showed.
 

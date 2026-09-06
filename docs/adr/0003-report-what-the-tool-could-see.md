@@ -101,3 +101,16 @@ sentence has to survive the quoting.
 
 Nothing here is a check, nothing here cites the regulation, and the image count
 is not a regulatory quantity. It describes the tool's own reach.
+
+Item 5 of the Decision was not met by the code that landed with it, and was
+corrected on 6 September 2026. `scripts/inspect_artwork.py` read only the
+direct entries of a page's `/XObject` dictionary while item 1's counter
+followed Form XObjects, so the two halves of this decision disagreed about
+which images exist, and the script's zero path states a conclusion -- "no
+image is declared" -- rather than a number. An auditor doing exactly what this
+ADR sends them to do could be told there was no picture to consider on a page
+the checker had just said embeds two. Both halves now descend the same way,
+under the same depth bound, and `tests/test_inspect_artwork.py` asserts their
+totals are equal rather than leaving the agreement to be remembered. The
+lesson is the one ADR 0002 draws elsewhere: a contract stated for two
+implementations and enforced against neither is a wish.

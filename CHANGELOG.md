@@ -86,6 +86,22 @@ recorded as one.
 
 ### Fixed
 
+- `scripts/inspect_artwork.py` enumerated only the direct entries of a page's
+  `/XObject` dictionary, so an image reached through a Form XObject was
+  invisible to it, and its zero path prints a conclusion rather than a number:
+  "No image is declared on any page." The checker answers the same question
+  the other way, following `/Subtype /Form` with `MAX_FORM_DEPTH` for that
+  recursion, so on a page the checker said embeds two images the script told an
+  auditor there was no picture to consider. ADR 0003 states the contract for
+  both halves in one breath and both landed in the same commit, so the script
+  had never satisfied it. It now descends the same way under the same depth
+  bound. Placement descends with it: the drawn size of a nested image is its
+  own transform composed with the form's `/Matrix` and with the matrix in force
+  where the form was drawn, because descending in the enumeration alone would
+  have reported every nested image as unplaced. Images are keyed by path rather
+  than by bare name, since two forms on one page may each declare an `/Im0`.
+  `tests/test_inspect_artwork.py` is new and asserts the two totals are equal,
+  including on all ten cached published labels.
 - The extraction basis printed "A picture is not an available explanation for
   text this tool did not find" on a PDF carrying an inline image. `BI ... ID
   ... EI` draws a picture from bytes in the content stream rather than from a

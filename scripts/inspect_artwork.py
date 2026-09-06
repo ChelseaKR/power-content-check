@@ -18,6 +18,14 @@ substitutes for it:
     pdftoppm -r 150 -png label.pdf out    # poppler
     magick -density 150 label.pdf out.png # imagemagick
 
+"Declares" includes images reached through a Form XObject, and the size is the
+one the page actually draws them at, with the form's own transform composed in.
+That is the set the checker counts, and an auditor comparing this printout
+against a finding must get the same answer from both.
+
+What this does not do: it does not count inline images, it does not see text
+drawn as vector paths, and it does not read the pictures it finds.
+
 Not part of the package, and never invoked by the CLI, which is offline and
 opens only the files it is given.
 
@@ -44,6 +52,14 @@ NARROW_POINTS = 120.0
 
 IDENTITY = (1.0, 0.0, 0.0, 1.0, 0.0, 0.0)
 
+#: How far to follow Form XObjects, matching ``extract.MAX_FORM_DEPTH``.
+#:
+#: Deliberately a copy rather than an import, so this script keeps needing
+#: nothing but pypdf and an auditor can run it against a checkout they have not
+#: installed. `tests/test_inspect_artwork.py` asserts the two values are equal,
+#: so the copy cannot drift into a disagreement about which images exist.
+MAX_FORM_DEPTH = 4
+
 
 def _multiply(a: tuple[float, ...], b: tuple[float, ...]) -> tuple[float, ...]:
     """Compose two PDF transformation matrices, a then b."""
@@ -57,34 +73,105 @@ def _multiply(a: tuple[float, ...], b: tuple[float, ...]) -> tuple[float, ...]:
     )
 
 
-def _placements(page: Any, reader: Any) -> list[tuple[str, float, float, float, float]]:
-    """Every XObject the page draws, with where and how big it is drawn."""
-    stream = ContentStream(page.get_contents(), reader)
-    matrix: tuple[float, ...] = IDENTITY
+def _xobjects(resources: Any) -> dict[str, Any]:
+    """The ``/XObject`` entries of one resource dictionary, unresolved."""
+    if resources is None:
+        return {}
+    entries = resources.get_object().get("/XObject")
+    if entries is None:
+        return {}
+    return {str(name): ref for name, ref in entries.get_object().items()}
+
+
+def _draw_stream(
+    stream_object: Any,
+    resources: Any,
+    reader: Any,
+    outer: tuple[float, ...],
+    depth: int,
+    prefix: str,
+    found: dict[str, tuple[float, float, float, float]],
+) -> None:
+    """Record where each image is drawn, descending through Form XObjects.
+
+    A form is drawn by the same ``Do`` that draws an image, and it carries its
+    own content stream and its own resources. An image inside one is placed by
+    the form's ``cm`` operators composed with the matrix in force where the form
+    itself was drawn, and with the form's own ``/Matrix`` between them. Walking
+    only the page stream, as this script used to, finds no ``Do`` naming a
+    nested image and reports it as unplaced.
+    """
+    if stream_object is None or depth > MAX_FORM_DEPTH:
+        return
+    entries = _xobjects(resources)
+    matrix = outer
     stack: list[tuple[float, ...]] = []
-    drawn: list[tuple[str, float, float, float, float]] = []
-    for operands, operator in stream.operations:
+    for operands, operator in ContentStream(stream_object, reader).operations:
         if operator == b"q":
             stack.append(matrix)
         elif operator == b"Q":
-            matrix = stack.pop() if stack else IDENTITY
+            matrix = stack.pop() if stack else outer
         elif operator == b"cm":
             matrix = _multiply(tuple(float(v) for v in operands), matrix)
         elif operator == b"Do":
+            name = str(operands[0])
+            ref = entries.get(name)
+            obj = ref.get_object() if ref is not None else None
+            path = f"{prefix}{name}"
+            if obj is not None and obj.get("/Subtype") == "/Form":
+                inner = matrix
+                form_matrix = obj.get("/Matrix")
+                if form_matrix is not None:
+                    inner = _multiply(tuple(float(v) for v in form_matrix), matrix)
+                _draw_stream(obj, obj.get("/Resources"), reader, inner, depth + 1, f"{path}", found)
+                continue
             width = abs(matrix[0]) + abs(matrix[2])
             height = abs(matrix[1]) + abs(matrix[3])
-            drawn.append((str(operands[0]), width, height, matrix[4], matrix[5]))
-    return drawn
+            found[path] = (width, height, matrix[4], matrix[5])
 
 
-def _resources(page: Any) -> dict[str, Any]:
-    resources = page.get("/Resources")
-    if resources is None:
+def _placements(page: Any, reader: Any) -> dict[str, tuple[float, float, float, float]]:
+    """Every image the page draws, with where and how big it is drawn."""
+    found: dict[str, tuple[float, float, float, float]] = {}
+    _draw_stream(page.get_contents(), page.get("/Resources"), reader, IDENTITY, 0, "", found)
+    return found
+
+
+def _declared_images(
+    resources: Any,
+    seen: set[tuple[int, int]],
+    depth: int = 0,
+    prefix: str = "",
+) -> dict[str, Any]:
+    """Every image XObject reachable from a resource dictionary, forms included.
+
+    This is the script's half of the contract ADR 0003 states for both halves.
+    It mirrors ``extract._images_in``, which is what the checker counts: the
+    same descent into ``/Subtype /Form``, the same depth bound, and the same
+    guard against following one object twice, so that a document referencing an
+    image from two places is counted once by each.
+
+    Keys are paths rather than bare names, because two forms on one page may
+    each declare an ``/Im0`` and a bare name could not tell them apart.
+    """
+    if resources is None or depth > MAX_FORM_DEPTH:
         return {}
-    xobjects = resources.get_object().get("/XObject")
-    if xobjects is None:
-        return {}
-    return {str(name): ref.get_object() for name, ref in xobjects.get_object().items()}
+    found: dict[str, Any] = {}
+    for name, ref in _xobjects(resources).items():
+        key = getattr(ref, "idnum", None)
+        if key is not None:
+            marker = (int(key), int(ref.generation))
+            if marker in seen:
+                continue
+            seen.add(marker)
+        obj = ref.get_object()
+        subtype = obj.get("/Subtype")
+        path = f"{prefix}{name}"
+        if subtype == "/Image":
+            found[path] = obj
+        elif subtype == "/Form":
+            found.update(_declared_images(obj.get("/Resources"), seen, depth + 1, path))
+    return found
 
 
 def inspect(path: Path) -> int:
@@ -98,12 +185,11 @@ def inspect(path: Path) -> int:
 
     total = 0
     for number, page in enumerate(reader.pages, start=1):
-        objects = _resources(page)
-        images = {name: obj for name, obj in objects.items() if obj.get("/Subtype") == "/Image"}
+        images = _declared_images(page.get("/Resources"), set())
         total += len(images)
         print(f"  page {number}: {len(images)} images declared, media box {page.mediabox}")
         try:
-            placed = {name: box for name, *box in _placements(page, reader)}
+            placed = _placements(page, reader)
         except Exception as exc:
             print(f"    placements could not be read: {type(exc).__name__}")
             placed = {}
@@ -111,18 +197,19 @@ def inspect(path: Path) -> int:
             pixels = f"{obj.get('/Width')}x{obj.get('/Height')} px"
             box = placed.get(name)
             if box is None:
-                print(f"    {name:8s} {pixels:16s} placement not found in the content stream")
+                print(f"    {name:14s} {pixels:16s} placement not found in the content stream")
                 continue
             width, height, x, y = box
             note = "too small for a legible phone number" if width < NARROW_POINTS else "large"
             print(
-                f"    {name:8s} {pixels:16s} drawn {width:.0f}x{height:.0f} pt "
+                f"    {name:14s} {pixels:16s} drawn {width:.0f}x{height:.0f} pt "
                 f"at ({x:.0f}, {y:.0f}), {note}"
             )
 
     if total == 0:
-        print("  No image is declared on any page. Text drawn as vector paths would")
-        print("  still not be read, so render the page if anything remains in doubt.")
+        print("  No image XObject is declared on any page. An image drawn inline, or")
+        print("  text drawn as vector paths, would still not be read, so render the")
+        print("  page if anything remains in doubt.")
     else:
         print(f"  {total} images in total. Render the page to see what they are.")
     return 0
