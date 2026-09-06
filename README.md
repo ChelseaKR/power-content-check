@@ -92,6 +92,48 @@ Note that exit code 2 is the ordinary result for a well formed label, because
 seventeen registered checks enforce nothing and always report as not evaluated.
 That is deliberate. See below.
 
+### Comparing two reports
+
+A report is a set of statements about a document, so two reports can be compared
+and the difference is another set of statements about that document.
+
+```sh
+power-content-check check label.pdf --json > before.json
+# change a matcher, or read the supplier's reissued label
+power-content-check check label.pdf --json > after.json
+power-content-check diff before.json after.json
+```
+
+For each check whose status moved, `diff` prints both statuses and the finding
+sentence on each side; beside them it prints any document fact that moved, such
+as readability, page count or the extraction basis, because a deviation found on
+a document read as two pages is not the same evidence as one found on a document
+read as five. `--jsonl` emits one object per change, sorted, so two runs produce
+identical bytes. Documents are matched by path, or by `sha256` with `--by-hash`
+when the paths differ and the bytes do not.
+
+Its exit codes are its own: `0` nothing moved, `3` something moved, `64` the two
+reports cannot be compared. `check` and `diff` answer different questions and
+neither code set is read across them.
+
+Three things it will not do:
+
+- **A check present on one side only is reported as added or removed, never as a
+  status move.** Registering a check makes it appear in the later report with a
+  status; calling that a move would report a conclusion changing when nothing
+  about the document did.
+- **Two reports at different `schema_version` values are refused, with both
+  versions named.** The shape is append only within a version (ADR 0010), not
+  across versions, so diffing them could attribute a schema change to the label.
+- **No direction is named.** A move from `does_not_conform` to `conforms` prints
+  with both sides and no adjective. These are document facts, and none of them is
+  a statement about a supplier.
+
+`scripts/check_regressions.py compare --explain` uses the same comparison to name
+which check moved on which cached label, rather than only that a fingerprint did.
+It refuses, in words, when the baseline predates the stored reports: explaining
+nothing must not read like nothing having moved.
+
 ## Two rules this tool is built around
 
 ### A document it could not read is never reported as conforming
