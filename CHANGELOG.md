@@ -11,7 +11,39 @@ recorded as one.
 
 ## [Unreleased]
 
+### Fixed
+
+- **`diff`'s list of what it compares was held to nothing, and the first key added after it
+  was written walked straight past it.** `DOCUMENT_FACTS` is a hand-kept tuple of the
+  document-level facts the verb compares. `advisories`, added to every document report in
+  the change above, was emitted and never compared, and no test in the suite could tell:
+  the verb kept passing and simply reported less than a reader would assume. A hand-kept
+  list of what the code emits, living beside the code that emits it, is exactly the thing
+  that goes quietly out of date.
+- **The binding now runs in both directions.** Every key a document report emits must be
+  either in `DOCUMENT_FACTS` or in the new `NOT_COMPARED`, which carries a stated reason
+  per key, so excusing something is a decision written down rather than an omission. A
+  fact or an excuse naming a key the report no longer emits fails too, because a rule
+  about a key that does not exist has stopped covering anything.
+- **A `Kind` with no branch in the renderer fell through to "in the earlier report only",**
+  which is a sentence about something else entirely. Two kinds were added here, so every
+  kind is now rendered and asserted.
+
 ### Added
+
+- **`diff` reports advisories that appeared or went**, under `advisory_moved`, by code,
+  with both sides carried whole. That is the same shape the status comparison uses: the
+  status triggers a row and the finding text travels on it. It is deliberately not filed
+  among the document facts, because an advisory is not a conclusion.
+- **A report written before the advisory channel existed is named as such, not read as an
+  empty one.** Adding a key is append only within a schema version (ADR 0010), so such a
+  report declares the same `schema_version` and is not refused. Reading its missing
+  `advisories` key as `[]` would report an advisory appearing on every document of every
+  diff spanning that change: an absence rendered as a movement. It comes back as
+  `advisories_not_comparable`, naming which side lacked the key.
+- **`advisories_not_comparable` does not make the diff exit 3.** `3` means something moved,
+  and "these two reports cannot be compared for advisories" is this verb saying what it
+  could not look at. That is a thing to print and not a thing to score.
 
 - **An advisory channel, for things noticed that no published requirement covers.**
   Calibration turned up facts about real labels that no check can report because there is

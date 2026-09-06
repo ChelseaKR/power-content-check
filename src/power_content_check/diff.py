@@ -69,11 +69,20 @@ class Kind(StrEnum):
     DOCUMENT_ADDED = "document_added"
     DOCUMENT_REMOVED = "document_removed"
     DOCUMENT_FACT_MOVED = "document_fact_moved"
+    ADVISORY_MOVED = "advisory_moved"
+    ADVISORIES_NOT_COMPARABLE = "advisories_not_comparable"
 
 
 #: Document-level facts compared beside the check results. These qualify what a finding is
 #: entitled to mean: a deviation found on a document the tool read as two pages is not the
 #: same evidence as one found on a document it read as five.
+#:
+#: Hand kept, and held to the report by
+#: :func:`tests.test_diff.test_every_document_key_is_either_compared_or_excused`. It was
+#: hand kept and held to nothing until 2026-09-06, and the first key added to a document
+#: report after that walked straight past it: ``advisories`` was emitted, never compared,
+#: and nothing noticed. A list of what the code emits, maintained beside the code that
+#: emits it, is exactly the thing that goes quietly out of date.
 DOCUMENT_FACTS = (
     "readability",
     "unreadable_reason",
@@ -82,6 +91,31 @@ DOCUMENT_FACTS = (
     "vector_shape_count",
     "extraction_basis",
 )
+
+#: Keys a document report carries that this module deliberately does not compare as facts,
+#: each with the reason. The gate above reads this, so excusing a key is a decision written
+#: down rather than an omission.
+NOT_COMPARED: dict[str, str] = {
+    "path": (
+        "the identity of the document, not a statement about it, and matching by path or "
+        "by sha256 is what `--by-hash` is for"
+    ),
+    "sha256": (
+        "the identity of the bytes. Two reports on different bytes are the ordinary case "
+        "for a reissued label, and reporting that as a movement would fire on every diff "
+        "worth running"
+    ),
+    "counts": (
+        "derived from the results, which are compared one by one. A count that moved with "
+        "no status moving is impossible, and reporting both would double every row"
+    ),
+    "results": "compared check by check below, not as a blob",
+    "advisories": (
+        "compared, but by code and under its own kind rather than as a document fact: an "
+        "advisory is not a conclusion and filing it among the facts that are would "
+        "overstate it"
+    ),
+}
 
 
 @dataclass(frozen=True)
@@ -212,6 +246,57 @@ def _result_view(result: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+def _advisory_codes(document: dict[str, Any]) -> tuple[str, ...] | None:
+    """The advisory codes a document report carries, or None if it carries no such key.
+
+    None and ``()`` are different statements and this module must not merge them. A report
+    written before the advisory channel existed has no ``advisories`` key at all, and it
+    declares the same ``schema_version`` as one written after, because adding a key is
+    append only within a version (ADR 0010). Reading the missing key as an empty list would
+    report an advisory appearing on every document of every diff that spans that change:
+    an absence rendered as a movement.
+    """
+    carried = document.get("advisories")
+    if carried is None:
+        return None
+    return tuple(sorted(str(entry.get("code")) for entry in carried))
+
+
+def _compare_advisories(before: dict[str, Any], after: dict[str, Any], *, key: str) -> list[Change]:
+    """Advisories that appeared or went, or a statement that they cannot be compared.
+
+    Compared by code, with both sides carried whole, which is the same shape the status
+    comparison uses: the status triggers a row and the finding text travels on it. A
+    reworded observation is a change in this tool, and this verb reports changes in the
+    document.
+    """
+    old, new = _advisory_codes(before), _advisory_codes(after)
+    if old is None or new is None:
+        side = "the earlier" if old is None else "the later"
+        return [
+            Change(
+                kind=Kind.ADVISORIES_NOT_COMPARABLE,
+                document=key,
+                check_id=None,
+                field="advisories",
+                before={"advisories": before.get("advisories")},
+                after={"advisories": after.get("advisories"), "missing_from": side},
+            )
+        ]
+    if old == new:
+        return []
+    return [
+        Change(
+            kind=Kind.ADVISORY_MOVED,
+            document=key,
+            check_id=None,
+            field="advisories",
+            before={"advisories": before.get("advisories"), "codes": list(old)},
+            after={"advisories": after.get("advisories"), "codes": list(new)},
+        )
+    ]
+
+
 def compare_documents(before: dict[str, Any], after: dict[str, Any], *, key: str) -> list[Change]:
     """Every movement between one document's two reports."""
     changes: list[Change] = []
@@ -229,6 +314,8 @@ def compare_documents(before: dict[str, Any], after: dict[str, Any], *, key: str
                     after={fact: new},
                 )
             )
+
+    changes.extend(_compare_advisories(before, after, key=key))
 
     old_results = _results_by_id(before)
     new_results = _results_by_id(after)
@@ -349,6 +436,19 @@ def _describe(change: Change) -> list[str]:
         before, after = change.side("before"), change.side("after")
         field = change.field or ""
         return [f"  {field}: {before[field]!r} -> {after[field]!r}"]
+    if change.kind is Kind.ADVISORY_MOVED:
+        before, after = change.side("before"), change.side("after")
+        return [
+            f"  advisories: {before['codes']} -> {after['codes']}",
+            "      not a conclusion; in no count and no exit code on either side",
+        ]
+    if change.kind is Kind.ADVISORIES_NOT_COMPARABLE:
+        after = change.side("after")
+        return [
+            f"  advisories: not compared. {after['missing_from']} report carries no "
+            "advisories key at all, so it predates the channel",
+            "      an absent key is not an empty list, and is not reported as one",
+        ]
     if change.kind is Kind.DOCUMENT_ADDED:
         return ["  in the later report only"]
     return ["  in the earlier report only"]

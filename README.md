@@ -151,6 +151,13 @@ diverged, and reports that the space insensitive fold matched it anyway.
 A report is a set of statements about a document, so two reports can be compared
 and the difference is another set of statements about that document.
 
+What it compares is held to what a report carries: every key a document report
+emits is either compared as a fact or listed as deliberately not compared with
+the reason, in both directions, so a key added later cannot go uncompared in
+silence. A report written before a key existed is named as such rather than read
+as one carrying the key empty, and saying so does not by itself make the diff
+report that something moved.
+
 ```sh
 power-content-check check label.pdf --json > before.json
 # change a matcher, or read the supplier's reissued label
