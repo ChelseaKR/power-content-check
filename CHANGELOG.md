@@ -284,15 +284,21 @@ recorded as one.
   dependency, whose layout machinery `geometry.py` reads from below the
   public surface.
 
-## [0.1.0] - 2026-08-18
+## [0.1.0] (prepared, not released)
 
-First release. A deterministic conformance checker for California Power Content
-Labels: it reads a published label and reports which prescribed elements it can
-find, which it cannot, and which it is unable to judge. It makes no judgment
-about any supplier's power mix, performance or compliance status, and it is not
-affiliated with the California Energy Commission or any utility. One entry,
-because no earlier tag exists: the first cut and the work recorded against it
-before any tag was cut ship together.
+This section was written as the first release and dated 2026-08-18. No tag was
+ever cut. `git tag --list` is empty on this repository and on `origin`, there is
+no GitHub Release, and nothing has been published to any registry, so the date
+is removed until `v0.1.0` exists; a dated heading here is the changelog saying a
+version shipped. `tests/test_release_claims.py` requires the date back the
+moment a tag names this version, and refuses it before.
+
+A deterministic conformance checker for California Power Content Labels: it
+reads a published label and reports which prescribed elements it can find,
+which it cannot, and which it is unable to judge. It makes no judgment about any
+supplier's power mix, performance or compliance status, and it is not affiliated
+with the California Energy Commission or any utility. One entry, because no
+earlier tag exists: the work prepared as the first cut is recorded together.
 
 ### Added
 

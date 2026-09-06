@@ -9,6 +9,13 @@ Power Content Label, and the label's contents are prescribed in regulation.
 This tool reads one of those labels and reports which prescribed elements it
 can find, which it cannot, and which it is unable to judge.
 
+**Status:** Pre-release. `pyproject.toml` and `CITATION.cff` declare version
+`0.1.0` and no tag has been cut, so nothing has been released: no `v0.1.0` tag,
+no GitHub Release, no package-registry publication, nothing you can install by
+version. `CHANGELOG.md` records the work prepared under that number.
+`tests/test_release_claims.py` reads `git tag --list` and fails if this stops
+being said here while it stays true.
+
 ## What this tool does not do
 
 It checks conformance to a published format. **It makes no judgment about a
@@ -282,7 +289,7 @@ coverage floor, and the security scanners. It is the gate.
 | Code Quality | Applies |
 | Security & Supply-Chain | Applies |
 | CI/CD | Applies |
-| Release & Versioning | Applies |
+| Release & Versioning | Applies, not met. Version `0.1.0` is declared in `pyproject.toml` and `CITATION.cff`, no tag has been cut, and nothing has been released. `tests/test_release_claims.py` derives that from `git tag --list` rather than restating it: it fails if the declared version is neither tagged nor disclosed as untagged in the status line or this row, if another file restates a different version, if `CITATION.cff` carries a `date-released` without a tag naming it, or if `CHANGELOG.md` dates a section for a version nothing was tagged for |
 | Observability | Applies |
 | Performance | Applies |
 | Accessibility | N/A (no human-facing rendered surface; output is a terminal stream and JSON) |
