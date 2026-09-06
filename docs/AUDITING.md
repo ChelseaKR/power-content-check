@@ -91,6 +91,32 @@ requirement and what the tool could see of the document. To reproduce one:
 4. **Open the label and look**, which is the step no amount of tooling
    replaces and which the calibration record itself used.
 
+Steps 1 to 3 are what `explain` does for you, and it shows each one:
+
+```sh
+power-content-check explain LABEL.pdf PCL010
+```
+
+It prints the check's citation and quote, the document's readability and
+extraction basis, the normalised text the check read, every literal and
+pattern the check looks for with whether each matched, and for a literal that
+did not match, the nearest span in the document with the character where the
+two stopped agreeing. It also prints the fences that decided: which comparison
+ignores where the extractor put its spaces, and which reading of the page was
+consulted.
+
+Two things it will not do. It reaches no conclusion of its own: the status it
+prints comes from the same code `check` runs, which
+`tests/test_explain.py` holds for every registered check on both fixtures. And
+it reports no near miss for a pattern that found nothing, because there is no
+honest one to report.
+
+Read the scan plans as descriptions of the checks maintained beside them
+rather than as derivations of them. Two tests in `tests/test_explain.py` bind
+them: every literal a plan quotes must occur in `src/power_content_check/checks.py`,
+and on the conforming fixture every check that reports `conforms` must have at
+least one probe of its own that matched.
+
 To compare two runs without comparing timestamps and paths:
 
 ```sh

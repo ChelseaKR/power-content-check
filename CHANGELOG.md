@@ -13,6 +13,34 @@ recorded as one.
 
 ### Added
 
+- **`power-content-check explain LABEL.pdf PCL012`.** `docs/AUDITING.md` section 2 tells
+  a reader how to reproduce a finding by hand: extract, normalise, search. The new verb
+  does those steps and shows its work, which is what separates a genuine deviation from a
+  phrase the extractor broke apart in a way `normalize.py` does not yet fold. It prints
+  the citation and quote, the document's readability and extraction basis, the text the
+  check read with its full length, every literal and pattern the check looks for with
+  whether each matched, and, for a literal that did not match, the nearest span in the
+  document and the character where the two stopped agreeing. `--json` emits the same
+  values under their own `schema_version`.
+- **It decides nothing new.** The status, finding and detail come from
+  `engine.check_document` over a one check registry, so they are what `check` reaches by
+  the same code rather than by agreement. `tests/test_explain.py` asserts the equality for
+  every registered check on both fixtures. The exit code is the one that conclusion
+  implies on the published table; an unregistered identifier is a usage error and exits
+  64.
+- **Near miss reporting is descriptive and threshold free.** It reports the longest run of
+  characters over which the document and the phrase agree, anchored on the phrase's first
+  character. There is no cut off above which a near miss becomes a match, so it cannot
+  become a lenient matcher and reach back into a status (ADR 0007). A phrase matched under
+  the space insensitive fold of ADR 0006 is shown where that fold found it, in the
+  document's own coordinates, so a subscripted CO2e is quoted as `co 2e` with the space
+  named as the divergence.
+- **No probe list is silently empty, and no pattern gets an invented near miss.** A scan
+  plan carries at least one literal or one pattern, or else says in words that this check
+  compared nothing and why, which is what PCL001 does without `--supplier-name`. A page
+  with no recoverable column geometry reports that there is no column reading, never an
+  empty one.
+
 - **`power-content-check diff before.json after.json`.** `scripts/check_regressions.py`
   compares fingerprints, so it can say *that* a conclusion moved and never *which*. The
   new verb compares two JSON reports and names, per document and check, every status that

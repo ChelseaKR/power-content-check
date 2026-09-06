@@ -56,6 +56,9 @@ uv run power-content-check check label.pdf --json
 
 # every registered check, with the requirement each one cites
 uv run power-content-check catalog
+
+# show the text one check scanned, and where the match failed
+uv run power-content-check explain label.pdf PCL012
 ```
 
 Accepts `.pdf` and `.txt`. A directory is expanded to the supported files
@@ -91,6 +94,36 @@ the louder of the two, never the quieter.
 Note that exit code 2 is the ordinary result for a well formed label, because
 seventeen registered checks enforce nothing and always report as not evaluated.
 That is deliberate. See below.
+
+### Showing the work behind one check
+
+A deviation is a claim about extracted text. `explain` prints the text the
+check read, the literal or pattern it looked for, whether each one matched,
+and where the nearest candidate span stopped agreeing with the phrase.
+
+```sh
+power-content-check explain LABEL.pdf PCL010
+power-content-check explain LABEL.pdf PCL010 --json
+```
+
+It decides nothing new. The status it prints comes from the same function
+`check` runs, over a registry holding the one named check, so the conclusion is
+identical by construction rather than by agreement. Its exit code is the code
+that one conclusion implies on the table above, and an unregistered identifier
+is a usage error.
+
+Near miss reporting is descriptive and threshold free: it reports the longest
+run of characters over which the document and the phrase agree, anchored on the
+phrase's first character. There is no cut off above which a near miss becomes a
+match, so nothing here can turn into a lenient matcher. For a regular
+expression it says whether the pattern matched and quotes what it matched; it
+does not invent a nearest span, because "how close did this text come to
+matching a pattern" has no answer this tool is entitled to give.
+
+This is what distinguishes a genuine deviation from a phrase the extractor
+broke apart. On a label whose CO2e is set with a subscript 2, the output shows
+`co 2e` in the document, names the space as the character where the phrase
+diverged, and reports that the space insensitive fold matched it anyway.
 
 ### Comparing two reports
 

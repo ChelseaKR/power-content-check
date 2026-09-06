@@ -25,6 +25,9 @@ from .diff import (
 )
 from .diff import render_text as render_diff_text
 from .engine import check_paths, fingerprint
+from .explain import UnknownCheck, explain
+from .explain import render_json as render_explain_json
+from .explain import render_text as render_explain_text
 from .extract import DEFAULT_MIN_TEXT_CHARS, SUPPORTED_SUFFIXES
 from .model import ExitCode
 from .report import render_catalog, render_json, render_text
@@ -160,6 +163,38 @@ def build_parser() -> argparse.ArgumentParser:
         help="emit one JSON object per change instead of the text rendering",
     )
 
+    explain_cmd = sub.add_parser(
+        "explain",
+        help="show the text one check scanned and where the match failed",
+        description=(
+            "Run one registered check against one document and print its working: the "
+            "text the check read, the literal or pattern it looked for, whether each "
+            "one matched, and where the nearest candidate span stopped agreeing. It "
+            "decides nothing new: the status it prints is the status `check` reaches, "
+            "reached by the same code. Exit codes are the ones in the table below, for "
+            "this one check. " + NOTICE
+        ),
+        epilog=_EPILOG,
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
+    explain_cmd.add_argument("path", type=Path, help="the label file to read")
+    explain_cmd.add_argument("check_id", metavar="CHECK_ID", help="a registered check, e.g. PCL012")
+    explain_cmd.add_argument(
+        "--supplier-name",
+        default=None,
+        help="the retail supplier's company name, which PCL001 compares against",
+    )
+    explain_cmd.add_argument(
+        "--min-text-chars",
+        type=int,
+        default=DEFAULT_MIN_TEXT_CHARS,
+        help=(
+            "below this many extracted characters a document is treated as unreadable "
+            f"(default: {DEFAULT_MIN_TEXT_CHARS})"
+        ),
+    )
+    explain_cmd.add_argument("--json", action="store_true", help="emit the explanation as JSON")
+
     return parser
 
 
@@ -176,6 +211,9 @@ def main(argv: Sequence[str] | None = None) -> int:
 
     if args.min_text_chars < 0:
         parser.error("--min-text-chars cannot be negative")
+
+    if args.command == "explain":
+        return _explain(args, parser)
 
     if not args.paths:
         # Not a usage error. The tool was asked to check nothing, and it says
@@ -194,6 +232,28 @@ def main(argv: Sequence[str] | None = None) -> int:
     if args.fingerprint:
         print(f"fingerprint: {fingerprint(report)}")
     return report.exit_code
+
+
+def _explain(args: argparse.Namespace, parser: argparse.ArgumentParser) -> int:
+    """``explain`` end to end.
+
+    An unregistered identifier is a usage error, so it exits 64 like every
+    other one. Anything else exits on the conclusion the check reached, which
+    keeps a script wrapping ``explain`` reading the same table as a script
+    wrapping ``check``.
+    """
+    try:
+        explanation = explain(
+            args.path,
+            args.check_id,
+            CheckContext(supplier_name=args.supplier_name),
+            args.min_text_chars,
+        )
+    except UnknownCheck as unknown:
+        parser.error(str(unknown))
+    rendered = render_explain_json(explanation) if args.json else render_explain_text(explanation)
+    print(rendered)
+    return explanation.exit_code
 
 
 def _diff(args: argparse.Namespace) -> int:
