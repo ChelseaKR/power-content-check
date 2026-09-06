@@ -15,7 +15,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: security-${{ github.ref }}
+  group: security-${{ github.ref }}-${{ github.event_name == 'pull_request' && 'pr' || github.sha }}
   cancel-in-progress: true
 
 jobs:
