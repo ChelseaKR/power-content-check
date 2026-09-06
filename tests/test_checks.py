@@ -436,6 +436,39 @@ class TestDisplayedTotals:
         assert "97" in finding
 
 
+def _subscript_heading_pdf(path: Path) -> Path:
+    """A label drawing the 2 of CO2e as a lowered run of its own.
+
+    Identical to the shared fixture in the words a reader sees. Only the
+    typesetting differs, and only for the one word ADR 0006 records the issued
+    labels as setting with a subscript.
+    """
+    from conftest import LABEL_LINES, _pdf, _stream
+
+    head = "Greenhouse Gas Emissions Intensity in lbs of CO"
+    drawing = ["BT /F1 11 Tf"]
+    for index, line in enumerate(LABEL_LINES):
+        y = 740 - index * 18
+        if line.startswith("Greenhouse Gas Emissions Intensity"):
+            drawing.append(f"1 0 0 1 40 {y} Tm ({head}) Tj")
+            drawing.append(f"/F1 7 Tf 1 0 0 1 268 {y - 5} Tm (2) Tj")
+            drawing.append(f"/F1 11 Tf 1 0 0 1 274 {y} Tm (e per megawatt hour: 410) Tj")
+        else:
+            drawing.append(f"1 0 0 1 40 {y} Tm ({line}) Tj")
+    drawing.append("ET")
+
+    objects = [
+        b"<< /Type /Catalog /Pages 2 0 R >>",
+        b"<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
+        b"<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Contents 4 0 R "
+        b"/Resources << /Font << /F1 5 0 R >> >> >>",
+        _stream("", "\n".join(drawing).encode("ascii")),
+        b"<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>",
+    ]
+    path.write_bytes(_pdf(objects))
+    return path
+
+
 class TestGhgUnits:
     def _run(self, tmp_path: Path, body: str) -> tuple[Status, str]:
         from power_content_check.checks import BY_ID
@@ -462,6 +495,36 @@ class TestGhgUnits:
         status, finding = self._run(tmp_path, "Greenhouse gas emissions intensity 410")
         assert status is Status.DOES_NOT_CONFORM
         assert "CO2e" in finding
+
+    def test_a_subscript_in_the_heading_does_not_hide_the_units(self, tmp_path: Path) -> None:
+        """The issued labels set the 2 of CO2e as a subscript, in the heading too.
+
+        ADR 0006 settled this for the footnote checks, which compare prescribed
+        text. "CO2e" is prescribed text as well: PCL010's own reason line cites
+        section 1393.1(c)(3) requiring the figure in pounds of CO2e per megawatt
+        hour. A subscript is a separate text run, so the extractor hands back
+        "CO", a break, then "2e", and a raw substring test would report a fact
+        about pypdf as a deviation against a named supplier.
+        """
+        from power_content_check.checks import BY_ID
+        from power_content_check.normalize import contains_ignoring_spaces
+
+        path = _subscript_heading_pdf(tmp_path / "subscript_heading.pdf")
+        document = extract(path)
+        assert isinstance(document, LabelDocument)
+
+        # The fixture must actually reproduce the split, or this test would
+        # pass for the wrong reason on an extractor that groups the runs. Where
+        # exactly pypdf puts the break is its business and is not pinned here;
+        # that a raw substring test fails while the words are all present is
+        # the whole condition under test.
+        assert "co2e" not in document.normalized
+        assert contains_ignoring_spaces(document.normalized, "CO2e")
+
+        run = BY_ID["PCL010"].run
+        assert run is not None
+        result = run(document, CheckContext())
+        assert result.status is Status.CONFORMS
 
 
 class TestAWebAddressIsNotAnEmailAddress:

@@ -166,8 +166,12 @@ what the pages declare and what they paint.
   writes down the bar anything reopening this would have to clear.
   [adr/0011](adr/0011-no-recognition-of-pictures.md).
 - **A phrase the extractor broke apart** is not a phrase the label lacks.
-  Prescribed footnote text is matched with the spaces removed on both sides,
-  because a subscript in the issued rendering split "CO2" into two runs.
+  Prescribed text is matched with the spaces removed on both sides, because a
+  subscript in the issued rendering split "CO2" into two runs. This covers
+  prescribed text wherever it sits, not only the footnotes: the footnote
+  checks PCL013 to PCL015, the statewide rendering in PCL016, and the `CO2e`
+  unit in PCL010, which section 1393.1(c)(3) prescribes and which carries the
+  same subscript in the heading.
   [adr/0006](adr/0006-a-phrase-the-extractor-broke-apart.md).
 - **Column geometry** is used for one narrow thing, deciding which cell a
   word sits in, and is consulted only inside the branch that reports

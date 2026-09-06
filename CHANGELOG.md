@@ -86,6 +86,19 @@ recorded as one.
 
 ### Fixed
 
+- PCL010 tested for the prescribed unit `CO2e` with a raw substring against
+  the normalised text, so a subscript in the intensity heading made it false.
+  The issued labels set the 2 of CO2 as a subscript, a subscript is a
+  separate text run, and normalisation turns the break into a space - the
+  exact case ADR 0006 already decided for the footnote checks. PCL010 was
+  the one check comparing a prescribed string without the guarantee this
+  project built for prescribed strings, so a label whose heading split would
+  have been told its units were not fully stated, which is a fact about
+  pypdf reported against a named supplier. It now routes through
+  `normalize.contains_ignoring_spaces` like PCL013 to PCL015 and PCL016.
+  The defect was latent rather than firing: on all ten cached published
+  labels the heading extracts as plain `co2e` under the pinned pypdf, and
+  conclusions about all ten are unchanged.
 - PCL003, PCL004 and PCL005 read the domain half of an email address as a
   website address, because `_DOMAIN` ran over the raw text and an address's
   domain is domain shaped. A label whose only contact was
