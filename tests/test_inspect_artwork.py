@@ -109,9 +109,20 @@ class TestTheTwoHalvesAgree:
         assert _script_count(path) == _checker_count(path) == images + nested
 
     def test_the_totals_agree_on_every_cached_label(self) -> None:
-        """The ten published labels the calibration record rests on."""
+        """The published labels the calibration record rests on, when present.
+
+        `examples/cache/` is gitignored on purpose, so this runs for whoever
+        has fetched the corpus with `scripts/fetch_examples.py` and skips in
+        CI, which has no network. It is an extra reading of the same contract
+        the synthetic cases above pin unconditionally, not the only one: those
+        run everywhere, so skipping here cannot leave the agreement untested.
+
+        Checked against all ten cached labels on 6 September 2026; every one
+        agrees, which is why this defect was latent rather than firing.
+        """
         cached = sorted((ROOT / "examples" / "cache").glob("*.pdf"))
-        assert cached, "no cached label to check the two halves against"
+        if not cached:
+            pytest.skip("no cached labels; run scripts/fetch_examples.py to include them")
         for path in cached:
             assert _script_count(path) == _checker_count(path), path.name
 
