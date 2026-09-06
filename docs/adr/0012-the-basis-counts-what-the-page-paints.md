@@ -79,7 +79,30 @@ small on those documents, which makes the strong sentence available more
 often than the old wording admitted. Nothing in the implemented count moves:
 this changes what the tool says about what it saw, not what it concludes.
 
-Inline images remain uncounted, as before, and the sentence does not claim
-otherwise. Type 3 fonts, whose glyphs are themselves little content streams,
-may contribute paint operations; they are shapes by this measure and the
-sentence describes painting, so the claim stays true even there.
+Inline images remain uncounted, as before. The sentence did claim otherwise,
+and this is the correction, made on 6 September 2026.
+
+`count_images` enumerates XObjects, an inline image is bytes in the middle of
+a content stream, and the zero/zero branch read those two zeros as "no
+picture" and printed the strongest sentence the tool has on the one document
+class where a picture is exactly the available explanation. `_bad` appends the
+basis to every deviation, so each absence finding on such a label carried the
+tool's maximally strong claim, wrongly. ADR 0003 had the invariant right --
+"the count narrows the question; it does not close it" -- and the wording
+adopted here overran it.
+
+The count is still XObjects only, because it is a published field and an
+inline image is not declared anywhere. What changed is that the *sentence* no
+longer rests on that count alone: `draws_inline_image` walks the same content
+streams the paint count already walks, following Form XObjects the same way,
+and the tool says a picture is unavailable only where that search came back
+empty. Where it finds one, the sentence says so; where the streams could not
+be read, it says that instead, because unknown is not zero here either.
+
+What remains outside the sentence, and is named in `docs/AUDITING.md` section
+4: text drawn as vector paths is counted as painting rather than read, and
+shading patterns are not counted at all.
+
+Type 3 fonts, whose glyphs are themselves little content streams, may
+contribute paint operations; they are shapes by this measure and the sentence
+describes painting, so the claim stays true even there.

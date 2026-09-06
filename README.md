@@ -124,10 +124,12 @@ not read.
 ```
 
 The sentence carries two counts: the images a page declares and the vector
-shapes it paints. For a PDF with neither, the sentence says so plainly,
-which is the strongest position an absence can be reported from: a picture is
-not an available explanation. Where either count cannot be taken, it says
-that instead of printing zero.
+shapes it paints. For a PDF with neither, and where a search of the content
+streams also finds no image drawn inline, the sentence says so plainly, which
+is the strongest position an absence can be reported from: a picture is not an
+available explanation. Where either count cannot be taken, or where an inline
+image is present or cannot be ruled out, it says that instead of printing
+zero.
 
 `scripts/inspect_artwork.py` prints every image a PDF declares and the size at
 which the page draws it, so you can judge whether a missing element could

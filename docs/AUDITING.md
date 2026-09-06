@@ -159,6 +159,18 @@ what the pages declare and what they paint.
   enumeration failure printed as unknown rather than as zero. No check reads
   either count; they qualify what an absence means and decide nothing.
   [adr/0012](adr/0012-the-basis-counts-what-the-page-paints.md).
+- **An inline image is looked for but not counted.** A picture written into a
+  content stream rather than declared as a resource is invisible to the image
+  count, so the strongest sentence the tool has -- that a picture is not an
+  available explanation -- is printed only after a separate search of the
+  content streams comes back empty. Where one is found the sentence says a
+  picture is present; where the streams could not be read it says the question
+  is open. The reported image count itself remains resources only.
+  [adr/0012](adr/0012-the-basis-counts-what-the-page-paints.md).
+- **What is still outside the sentence**: text drawn as vector paths is
+  counted as painting rather than read, and shading patterns are not counted
+  at all. Both leave the weaker wording in place rather than the strong one,
+  so neither can turn into a claim the tool has not measured.
 - **OCR is refused**, and the refusal is argued rather than assumed. Its
   output is a model's guess at text, which would put a probabilistic layer
   inside a tool whose value is that it contains none. A scanned label fails

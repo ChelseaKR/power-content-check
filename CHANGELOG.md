@@ -86,6 +86,21 @@ recorded as one.
 
 ### Fixed
 
+- The extraction basis printed "A picture is not an available explanation for
+  text this tool did not find" on a PDF carrying an inline image. `BI ... ID
+  ... EI` draws a picture from bytes in the content stream rather than from a
+  declared resource, `count_images` enumerates resources, and the zero image
+  and zero shape branch read those two zeros as no picture. The tool's
+  strongest claim was therefore printed on the one document class where a
+  picture is exactly the available explanation, and because the basis is
+  appended to every deviation, each absence finding on such a label carried
+  it. `count_images` remains resources only, since its number is a published
+  field and an inline image is declared nowhere; the sentence no longer rests
+  on that number alone. `draws_inline_image` walks the same content streams
+  the vector paint count already walks, Form XObjects included, and the strong
+  sentence is printed only where that search comes back empty. Where an inline
+  image is found the sentence says so, and where the streams could not be read
+  it says the question is open rather than treating unknown as zero.
 - PCL010 tested for the prescribed unit `CO2e` with a raw substring against
   the normalised text, so a subscript in the intensity heading made it false.
   The issued labels set the 2 of CO2 as a subscript, a subscript is a
