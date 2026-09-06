@@ -52,6 +52,9 @@ def script(
     baseline = cache / "fingerprints.json"
     monkeypatch.setattr(module, "CACHE", cache)
     monkeypatch.setattr(module, "BASELINE", baseline)
+    # `record` also stores the full reports `compare --explain` needs. Redirected here
+    # too, or these tests would write into the real (git ignored) cache directory.
+    monkeypatch.setattr(module, "REPORTS", cache / "reports.json")
     return module, cache, baseline, []
 
 
@@ -62,8 +65,13 @@ def _stock(cache: Path, *names: str) -> None:
         (cache / f"{name}.txt").write_text(source.read_text(encoding="utf-8"))
 
 
-def _run(module: ModuleType, action: str, monkeypatch: pytest.MonkeyPatch) -> int:
-    monkeypatch.setattr(sys, "argv", ["check_regressions.py", action])
+def _run(
+    module: ModuleType,
+    action: str,
+    monkeypatch: pytest.MonkeyPatch,
+    *flags: str,
+) -> int:
+    monkeypatch.setattr(sys, "argv", ["check_regressions.py", action, *flags])
     code = module.main()
     assert isinstance(code, int)
     return code
@@ -160,3 +168,67 @@ class TestComparingNothingIsNotAPass:
             _run(module, "compare", monkeypatch)
         assert excinfo.value.code == 1
         assert "no supported documents" in capsys.readouterr().out
+
+
+class TestExplainingWhatMoved:
+    """`--explain` answers the question a fingerprint cannot.
+
+    A fingerprint says that a conclusion moved. Which one moved is what a maintainer
+    needs before pushing a matcher change, and it is what `power_content_check.diff`
+    computes from the two reports. The fence tested here is the one that matters: when
+    there is no earlier report to compare against, saying nothing must not read like
+    saying nothing moved.
+    """
+
+    def test_it_names_the_check_whose_status_moved(
+        self,
+        script: tuple[ModuleType, Path, Path, list[str]],
+        monkeypatch: pytest.MonkeyPatch,
+        capsys: pytest.CaptureFixture[str],
+    ) -> None:
+        module, cache, baseline, _ = script
+        _stock(cache, "conforming_label")
+        assert _run(module, "record", monkeypatch) == 0
+        capsys.readouterr()
+
+        # Rewrite the stored report so one check reads as conforming where the current
+        # run finds a deviation, and move its fingerprint so `compare` reaches --explain.
+        reports = json.loads(module.REPORTS.read_text())
+        digest = sorted(reports)[0]
+        moved_id = reports[digest]["documents"][0]["results"][0]["check_id"]
+        reports[digest]["documents"][0]["results"][0]["status"] = "does_not_conform"
+        reports[digest]["documents"][0]["results"][0]["finding"] = "recorded as absent"
+        module.REPORTS.write_text(json.dumps(reports, indent=2, sort_keys=True) + "\n")
+
+        recorded = json.loads(baseline.read_text())
+        recorded[digest] = "0" * 64
+        baseline.write_text(json.dumps(recorded, indent=2, sort_keys=True) + "\n")
+
+        assert _run(module, "compare", monkeypatch, "--explain") == 1
+        out = capsys.readouterr().out
+        assert moved_id in out
+        assert "recorded as absent" in out
+        assert "could not be explained" not in out
+
+    def test_a_baseline_with_no_stored_reports_refuses_rather_than_saying_nothing(
+        self,
+        script: tuple[ModuleType, Path, Path, list[str]],
+        monkeypatch: pytest.MonkeyPatch,
+        capsys: pytest.CaptureFixture[str],
+    ) -> None:
+        """A baseline recorded before --explain existed carries no earlier side."""
+        module, cache, baseline, _ = script
+        _stock(cache, "conforming_label")
+        assert _run(module, "record", monkeypatch) == 0
+        module.REPORTS.unlink()
+        capsys.readouterr()
+
+        recorded = json.loads(baseline.read_text())
+        recorded[sorted(recorded)[0]] = "0" * 64
+        baseline.write_text(json.dumps(recorded, indent=2, sort_keys=True) + "\n")
+
+        assert _run(module, "compare", monkeypatch, "--explain") == 1
+        out = capsys.readouterr().out
+        assert "no recorded reports" in out
+        assert "1 of 1 moved documents could not be explained" in out
+        assert "Not explained is not unchanged." in out

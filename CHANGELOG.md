@@ -13,6 +13,38 @@ recorded as one.
 
 ### Added
 
+- **`power-content-check diff before.json after.json`.** `scripts/check_regressions.py`
+  compares fingerprints, so it can say *that* a conclusion moved and never *which*. The
+  new verb compares two JSON reports and names, per document and check, every status that
+  moved with the finding text on both sides, beside any document fact that moved with it
+  (readability, unreadable reason, page count, declared images, painted vector shapes,
+  extraction basis). `--jsonl` emits one sorted object per change, byte-identical on
+  repeat. Documents match by path, or by `sha256` with `--by-hash`. Exit `0` nothing
+  moved, `3` something moved, `64` the reports cannot be compared; these are the verb's
+  own codes and the README says so, because a reader who knows `check`'s codes would
+  otherwise assume them.
+- **A check present on one side only is added or removed, never a status move.**
+  Registering a check makes it appear in the later report with a status, and calling that
+  a move would report a conclusion changing on a document that did not change.
+- **Two reports at different `schema_version` values are refused, naming both.** ADR 0010
+  makes the shape append only within a version, not across versions, so diffing them
+  could attribute a schema change to the label.
+- **No direction is named.** A move from `does_not_conform` to `conforms` prints with
+  both sides and no adjective. A test asserts the rendering carries no judgment word.
+- **`scripts/check_regressions.py compare --explain`**, which runs that comparison over
+  the reports `record` now stores beside the fingerprints, so a maintainer sees which
+  check a matcher change moved on a real cached label before pushing. A baseline recorded
+  before this existed carries no reports; that case is reported in words and counted
+  ("1 of 1 moved documents could not be explained. Not explained is not unchanged."),
+  because explaining nothing must never read like nothing having moved.
+- Refused inputs, each with a test: a missing file, an empty file, an unparseable one, a
+  JSON document that is not one of this tool's reports, a `documents` value that is not a
+  list, and two documents sharing a match key. Two empty reports compare equal, and
+  "nothing moved" about two files that were never read is the vacuous pass this project
+  is organised against.
+
+### Added
+
 - Track J on the roadmap: auditing implemented checks for the ability to
   fail. A registered check that enforces nothing announces itself in every
   report; an implemented check that cannot reach its deviation branch does

@@ -15,6 +15,15 @@ from typing import NoReturn
 from . import __version__
 from .checks import CheckContext
 from .citations import NOTICE
+from .diff import (
+    DiffExit,
+    ReportUnreadable,
+    SchemaMismatch,
+    compare,
+    load_report,
+    render_jsonl,
+)
+from .diff import render_text as render_diff_text
 from .engine import check_paths, fingerprint
 from .extract import DEFAULT_MIN_TEXT_CHARS, SUPPORTED_SUFFIXES
 from .model import ExitCode
@@ -121,6 +130,36 @@ def build_parser() -> argparse.ArgumentParser:
     )
     catalog.add_argument("--json", action="store_true", help="emit the catalog as JSON")
 
+    diff = sub.add_parser(
+        "diff",
+        help="compare two JSON reports and say which conclusions moved",
+        description=(
+            "Compare two reports emitted by `check --json`: two tool versions over one "
+            "label, or one version over a label and its reissue. Prints every check "
+            "whose status moved with the finding on both sides, and every document fact "
+            "that moved beside it. Exit 0 nothing moved, 3 something moved, 64 the "
+            "reports cannot be compared. A check present on one side only is reported "
+            "as added or removed, never as a status move. " + NOTICE
+        ),
+        epilog=_EPILOG,
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
+    diff.add_argument("before", type=Path, help="the earlier report (JSON)")
+    diff.add_argument("after", type=Path, help="the later report (JSON)")
+    diff.add_argument(
+        "--by-hash",
+        action="store_true",
+        help=(
+            "match documents by sha256 rather than by path, for when the paths differ "
+            "and the bytes do not"
+        ),
+    )
+    diff.add_argument(
+        "--jsonl",
+        action="store_true",
+        help="emit one JSON object per change instead of the text rendering",
+    )
+
     return parser
 
 
@@ -131,6 +170,9 @@ def main(argv: Sequence[str] | None = None) -> int:
     if args.command == "catalog":
         print(render_catalog(as_json=args.json))
         return ExitCode.OK
+
+    if args.command == "diff":
+        return _diff(args)
 
     if args.min_text_chars < 0:
         parser.error("--min-text-chars cannot be negative")
@@ -152,6 +194,26 @@ def main(argv: Sequence[str] | None = None) -> int:
     if args.fingerprint:
         print(f"fingerprint: {fingerprint(report)}")
     return report.exit_code
+
+
+def _diff(args: argparse.Namespace) -> int:
+    """``diff`` end to end.
+
+    Every refusal prints to stderr and returns 64, so a caller that only reads stdout
+    sees an empty diff and a non-zero code rather than an empty diff and a zero one.
+    """
+    try:
+        before = load_report(args.before)
+        after = load_report(args.after)
+        changes = compare(before, after, by_hash=args.by_hash)
+    except (ReportUnreadable, SchemaMismatch) as exc:
+        print(f"power-content-check diff: {exc}", file=sys.stderr)
+        return DiffExit.REFUSED
+
+    rendered = render_jsonl(changes) if args.jsonl else render_diff_text(changes)
+    if rendered:
+        print(rendered, end="")
+    return DiffExit.MOVED if changes else DiffExit.UNCHANGED
 
 
 def run() -> None:  # pragma: no cover - console script shim
