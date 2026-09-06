@@ -298,6 +298,11 @@ class LabelDocument:
     #: what the page declares, and what the page does. No check reads either.
     vector_shape_count: int | None = None
     cells: tuple[str, ...] | None = None
+    #: The text of each page in order, or None when the input is plain text and
+    #: has no pages. Kept because the joined text cannot say which page a run
+    #: came from, and a page that yielded nothing is invisible in a join. No
+    #: check reads it; only the advisory channel does.
+    page_texts: tuple[str, ...] | None = None
 
 
 @dataclass(frozen=True)
@@ -376,6 +381,7 @@ def _build(
     extraction_basis: str,
     cells: tuple[str, ...] | None = None,
     vector_shape_count: int | None = None,
+    page_texts: tuple[str, ...] | None = None,
 ) -> LabelDocument:
     return LabelDocument(
         path=path,
@@ -388,6 +394,7 @@ def _build(
         extraction_basis=extraction_basis,
         cells=cells,
         vector_shape_count=vector_shape_count,
+        page_texts=page_texts,
     )
 
 
@@ -417,7 +424,7 @@ def _open_pdf(path: Path, digest: str) -> pypdf.PdfReader | UnreadableDocument:
 
 def _pdf_text(
     reader: pypdf.PdfReader, path: Path, digest: str
-) -> tuple[str, list[Any]] | UnreadableDocument:
+) -> tuple[list[str], list[Any]] | UnreadableDocument:
     try:
         pages = list(reader.pages)
     except Exception as exc:
@@ -438,7 +445,7 @@ def _pdf_text(
                 digest,
                 f"text extraction failed on page {index + 1}: {type(exc).__name__}",
             )
-    return "\n".join(chunks), pages
+    return chunks, pages
 
 
 def _extract_pdf(path: Path, data: bytes, digest: str, min_chars: int) -> ExtractResult:
@@ -450,7 +457,8 @@ def _extract_pdf(path: Path, data: bytes, digest: str, min_chars: int) -> Extrac
     if isinstance(extracted, UnreadableDocument):
         return extracted
 
-    text, pages = extracted
+    chunks, pages = extracted
+    text = "\n".join(chunks)
     if len(text.strip()) < min_chars:
         return UnreadableDocument(
             path,
@@ -477,6 +485,7 @@ def _extract_pdf(path: Path, data: bytes, digest: str, min_chars: int) -> Extrac
         basis,
         document_cells(pages),
         vector_shape_count=paints,
+        page_texts=tuple(chunks),
     )
 
 

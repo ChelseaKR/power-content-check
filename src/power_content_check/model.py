@@ -9,7 +9,10 @@ from __future__ import annotations
 import dataclasses
 from dataclasses import dataclass, field
 from enum import StrEnum
-from typing import Any
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:  # a cycle at runtime: advisory reads LabelDocument, which reads nothing here
+    from .advisory import Advisory
 
 
 class Status(StrEnum):
@@ -190,6 +193,10 @@ class DocumentReport:
     #: The sentence describing what the tool was able to look at. Reproduced on
     #: the report and appended to every deviation.
     extraction_basis: str | None = None
+    #: Things noticed about the document that no published requirement covers.
+    #: Not results: they carry no status, are in no count, and reach no exit
+    #: code. See :mod:`power_content_check.advisory` and ADR 0013.
+    advisories: list[Advisory] = field(default_factory=list)
 
     @property
     def counts(self) -> dict[str, int]:
@@ -218,6 +225,7 @@ class DocumentReport:
             "extraction_basis": self.extraction_basis,
             "counts": self.counts,
             "results": [r.to_dict() for r in self.results],
+            "advisories": [a.to_dict() for a in self.advisories],
         }
 
 
@@ -295,6 +303,9 @@ class RunReport:
                 d.counts[Status.DOES_NOT_CONFORM.value] for d in self.documents
             ),
             "not_evaluated": sum(d.counts[Status.NOT_EVALUATED.value] for d in self.documents),
+            # Counted, never scored. An advisory is not a result and this figure
+            # sits beside the three that are, rather than among them.
+            "advisories": sum(len(d.advisories) for d in self.documents),
         }
 
     def to_dict(self) -> dict[str, Any]:

@@ -67,6 +67,7 @@ class TestJson:
             "extraction_basis",
             "counts",
             "results",
+            "advisories",
         }
         assert document["readability"] == "readable"
         assert document["sha256"]
@@ -78,6 +79,7 @@ class TestJson:
             "conforms",
             "does_not_conform",
             "not_evaluated",
+            "advisories",
         }
         assert "image_count" in document
         assert document["extraction_basis"]

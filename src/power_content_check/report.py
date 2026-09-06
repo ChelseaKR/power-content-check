@@ -6,6 +6,7 @@ import json
 import textwrap
 from typing import Any
 
+from .advisory import NOTICE as ADVISORY_NOTICE
 from .checks import BY_ID
 from .model import DocumentReport, ExitCode, Readability, RunReport, Status
 
@@ -70,6 +71,8 @@ def _render_document(document: DocumentReport, verbose: bool) -> list[str]:
             )
         )
 
+    lines += _render_advisories(document)
+
     counts = document.counts
     lines.append(
         "  Summary: "
@@ -77,6 +80,27 @@ def _render_document(document: DocumentReport, verbose: bool) -> list[str]:
         f"{counts[Status.DOES_NOT_CONFORM.value]} do not conform, "
         f"{counts[Status.NOT_EVALUATED.value]} not evaluated."
     )
+    return lines
+
+
+def _render_advisories(document: DocumentReport) -> list[str]:
+    """Things noticed that no published requirement covers.
+
+    Its own section, never mixed in with the results, and never hidden behind
+    ``--verbose``. An advisory that only appears when the reader already
+    suspected something would be a quieter report than the reader's own eyes,
+    which is the state this channel was added to end. The notice is printed
+    once for the section rather than once per line, because three copies of the
+    same sentence is how a reader learns to skip it.
+    """
+    if not document.advisories:
+        return []
+    lines = ["", "  NOTICED, AND COVERED BY NO PUBLISHED REQUIREMENT", _wrap(ADVISORY_NOTICE, "  ")]
+    for advisory in document.advisories:
+        lines.append(f"  [ note ] {advisory.code}")
+        lines.append(_wrap(advisory.observation, "            "))
+        if advisory.where:
+            lines.append(_wrap(f"Where: {advisory.where}", "            "))
     return lines
 
 
@@ -145,6 +169,7 @@ def render_text(report: RunReport, verbose: bool = False) -> str:
         f"Checks conforming:    {summary['conforms']}",
         f"Checks not conforming:{summary['does_not_conform']}",
         f"Checks not evaluated: {summary['not_evaluated']}",
+        f"Advisory notes:       {summary['advisories']} (in no count above and in no exit code)",
         f"Exit code:            {report.exit_code} ({_exit_meaning(report.exit_code)})",
     ]
     if not verbose:

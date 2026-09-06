@@ -241,6 +241,25 @@ is most likely to expect to find and not find are:
   leaderboards. The tool reports which prescribed elements a document
   carries.
 
+### What the tool notices and does not decide
+
+A run can also print a section headed "noticed, and covered by no published
+requirement". Those are advisories, and they are not results. They carry no
+status, no severity and no citation; they are in no count and in no exit code;
+and `power_content_check.advisory` refuses an observation phrased as an
+obligation, because an advisory with no citation does not get to speak like a
+rule. The code space is closed to three: `ADV-BROKEN-PHRASE`,
+`ADV-DATA-YEAR-MISMATCH` and `ADV-TEXTLESS-PAGE`.
+
+To audit one, read it as a description of the document and check it by eye, the
+same way you would check a finding. Nothing follows from it about conformance,
+which is the point: `adr/0013` records why the channel exists and why it is
+fenced the way it is.
+
+If you keep a regression baseline, note that advisories are outside the
+fingerprint. A baseline recorded before this channel existed compares equal to
+one recorded after it.
+
 ## 6. Audit the gaps, not just the checks
 
 Seventeen of the thirty five registered checks enforce nothing, and that is
