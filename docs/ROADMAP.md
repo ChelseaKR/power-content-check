@@ -383,3 +383,10 @@ not resubmitting the idea.
 - **Any large language model anywhere in the pipeline.** Determinism is
   the product. Also settled empirically by the standards table: there is
   no AI surface to evaluate.
+- **Routing a refused rule through the advisory channel.** The channel
+  added in `docs/adr/0013` carries observations no published requirement
+  covers, and it carries no citation, which makes it the obvious place to
+  put a rule that could not justify one. Every refusal above is a decision
+  about a statement, and a statement does not change by being printed under
+  a different heading. The fuel mix sum is the specific case: PCL025's
+  reason is the arithmetic, not the channel.

@@ -95,6 +95,27 @@ Note that exit code 2 is the ordinary result for a well formed label, because
 seventeen registered checks enforce nothing and always report as not evaluated.
 That is deliberate. See below.
 
+### Things noticed that no requirement covers
+
+The tool reports only against published requirements, and calibration kept turning
+up facts about labels that no requirement addresses: a prescribed phrase present
+only once the extractor's spaces are ignored, a data year printed in two places
+that disagree, a page with no text layer in a document whose other pages have one.
+Those used to live as prose in `docs/sources.md` and as silence in the report.
+
+They now have a channel of their own, and the channel is fenced so it cannot
+become a back door for rules. An advisory carries no status, no severity and no
+citation; the code space is closed to `ADV-BROKEN-PHRASE`,
+`ADV-DATA-YEAR-MISMATCH` and `ADV-TEXTLESS-PAGE`; an observation phrased as an
+obligation is refused at construction; and nothing here reaches a status, an
+exit code or a fingerprint, so a regression baseline recorded before advisories
+existed is still valid. See
+[docs/adr/0013](docs/adr/0013-an-advisory-channel-fenced-off-from-the-rules.md).
+
+The recorded refusals stay refused. Summing the fuel mix columns against the
+displayed total is not an advisory candidate: PCL025's reason is about the
+arithmetic, not about which channel carries it.
+
 ### Showing the work behind one check
 
 A deviation is a claim about extracted text. `explain` prints the text the

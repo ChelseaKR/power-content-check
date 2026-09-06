@@ -22,6 +22,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 
 from . import __version__
+from .advisory import observe
 from .checks import CHECKS, CheckContext, RegisteredCheck
 from .citations import NOTICE, RULESET_EFFECTIVE, RULESET_ID
 from .extract import (
@@ -128,6 +129,9 @@ def check_document(
         image_count=outcome.image_count,
         vector_shape_count=outcome.vector_shape_count,
         extraction_basis=outcome.extraction_basis,
+        # An unreadable document gets none of these: nothing was read, so there
+        # is nothing to have noticed. That branch returns above.
+        advisories=observe(outcome),
     )
 
 

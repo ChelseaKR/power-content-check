@@ -13,6 +13,37 @@ recorded as one.
 
 ### Added
 
+- **An advisory channel, for things noticed that no published requirement covers.**
+  Calibration turned up facts about real labels that no check can report because there is
+  nothing to cite: a prescribed phrase present only once the extractor's spaces are taken
+  out of both sides, a data year printed in two places that disagree, a page with no text
+  layer in a document whose other pages have one. Those lived as prose in `docs/sources.md`
+  and as silence in the report. They now appear in their own section of the text output and
+  their own JSON array, with a run-level count printed beside the three status counts and
+  never among them. First codes: `ADV-BROKEN-PHRASE`, `ADV-DATA-YEAR-MISMATCH`,
+  `ADV-TEXTLESS-PAGE`.
+- **The channel is fenced so it cannot become a back door for rules**, in five ways, each
+  one a test. An `Advisory` is not a `CheckResult` and carries no status, no severity and
+  no citation. `ADVISORY_CODES` is closed and an unregistered code raises at construction.
+  An observation phrased as an obligation is refused, because an advisory with no citation
+  does not get to speak like a rule. Nothing here reaches a status, an exit code or a
+  fingerprint, so a regression baseline recorded before advisories existed stays valid.
+  And the recorded refusals stay refused: summing the fuel mix columns is not an advisory
+  candidate, which `docs/ROADMAP.md` now says in its Refusals list.
+- **`ADV-BROKEN-PHRASE` reads its phrases from `explain`'s scan plans**, which quote the
+  constants the checks themselves match, so the channel keeps no list of its own and the
+  two bindings that hold those plans to `checks.py` hold this too.
+- **`LabelDocument` gains `page_texts`**, the text of each page in order, `None` for a
+  plain text input. The joined text cannot say which page a run came from, and a page that
+  yielded nothing is invisible in a join. No check reads it.
+
+### Changed
+
+- The JSON report gains an `advisories` array on each document and an `advisories` figure
+  in the summary. `schema_version` stays at `1`: ADR 0010 makes the shape append only
+  within a version, and neither addition removes a key, renames one, or changes what a key
+  holds. `tests/test_report.py` pins the exact key sets, so both additions are asserted.
+
 - **`power-content-check explain LABEL.pdf PCL012`.** `docs/AUDITING.md` section 2 tells
   a reader how to reproduce a finding by hand: extract, normalise, search. The new verb
   does those steps and shows its work, which is what separates a genuine deviation from a
