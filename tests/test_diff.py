@@ -26,12 +26,15 @@ import pytest
 from power_content_check.checks import CheckContext
 from power_content_check.cli import main
 from power_content_check.diff import (
+    DOCUMENT_FACTS,
+    NOT_COMPARED,
     Change,
     DiffExit,
     Kind,
     ReportUnreadable,
     SchemaMismatch,
     compare,
+    compare_documents,
     load_report,
     render_jsonl,
     render_text,
@@ -63,6 +66,11 @@ def synthetic() -> dict[str, Any]:
                 "image_count": 1,
                 "vector_shape_count": 30,
                 "extraction_basis": "Read 2 pages of text.",
+                # Carried because this stands in for a report this tool emits, and a
+                # report this tool emits carries the key. A stand-in that had drifted
+                # from the real shape would make every comparison here a test of
+                # something the tool never produces.
+                "advisories": [],
                 "results": [
                     {
                         "check_id": "PCL001",
@@ -456,3 +464,191 @@ def test_a_row_missing_the_side_it_needs_raises_rather_than_printing_none() -> N
     )
     with pytest.raises(ValueError, match="carries no before side"):
         render_text([broken])
+
+
+# --- the list of what is compared, held to the report it compares -------------------------
+
+
+class TestNothingASideCarriesGoesUncompared:
+    """`DOCUMENT_FACTS` is hand kept, and until now it was held to nothing.
+
+    The first key added to a document report after this module was written walked
+    straight past it. `advisories` was emitted by `DocumentReport.to_dict`, was absent
+    from `DOCUMENT_FACTS`, and no test in the suite could tell. A hand-kept list of what
+    the code emits, maintained beside the code that emits it, is exactly the thing that
+    goes quietly out of date, and the failure is invisible: the diff keeps passing and
+    simply reports less than a reader assumes.
+
+    The binding is exhaustive in both directions. A key the report emits that is neither
+    compared nor excused fails; an excuse or a fact naming a key the report does not emit
+    fails too, because a rule about a key that no longer exists is a rule that has stopped
+    covering anything.
+    """
+
+    def _document_keys(self, conforming_label: Path) -> set[str]:
+        report = check_paths([conforming_label])
+        return set(report.documents[0].to_dict())
+
+    def test_the_report_has_keys_to_check(self, conforming_label: Path) -> None:
+        """The denominator. An empty key set passes every rule below."""
+        assert len(self._document_keys(conforming_label)) > 5
+
+    def test_every_document_key_is_either_compared_or_excused(self, conforming_label: Path) -> None:
+        emitted = self._document_keys(conforming_label)
+        accounted = set(DOCUMENT_FACTS) | set(NOT_COMPARED)
+        missing = sorted(emitted - accounted)
+        assert missing == [], (
+            f"a document report carries {missing}, which `diff` neither compares nor "
+            "excuses. Add each to DOCUMENT_FACTS, or to NOT_COMPARED with the reason."
+        )
+
+    def test_nothing_compared_or_excused_has_left_the_report(self, conforming_label: Path) -> None:
+        emitted = self._document_keys(conforming_label)
+        accounted = set(DOCUMENT_FACTS) | set(NOT_COMPARED)
+        orphaned = sorted(accounted - emitted)
+        assert orphaned == [], (
+            f"`diff` names {orphaned}, which a document report no longer carries. A rule "
+            "about a key that does not exist has stopped covering anything."
+        )
+
+    def test_a_key_is_not_both_compared_and_excused(self) -> None:
+        assert not (set(DOCUMENT_FACTS) & set(NOT_COMPARED))
+
+    def test_every_excuse_gives_a_reason(self) -> None:
+        """An excuse with no reason is an omission wearing a decision's clothes."""
+        for key, reason in NOT_COMPARED.items():
+            assert len(reason) > 20, f"{key} is excused without saying why"
+
+
+class TestAdvisoriesAreComparedWithoutBeingConclusions:
+    def _report(self, path: Path) -> dict[str, Any]:
+        loaded: dict[str, Any] = json.loads(render_json(check_paths([path])))
+        return loaded
+
+    @pytest.fixture
+    def noisy_label(self, tmp_path: Path, conforming_label: Path) -> Path:
+        path = tmp_path / "noisy.txt"
+        path.write_text(
+            conforming_label.read_text(encoding="utf-8").replace("CO2e", "CO 2e"),
+            encoding="utf-8",
+        )
+        return path
+
+    def test_an_advisory_appearing_is_reported(
+        self, conforming_label: Path, noisy_label: Path
+    ) -> None:
+        before = self._report(conforming_label)["documents"][0]
+        after = self._report(noisy_label)["documents"][0]
+        changes = compare_documents(before, after, key="label")
+        moved = [c for c in changes if c.kind is Kind.ADVISORY_MOVED]
+        assert len(moved) == 1
+        assert moved[0].side("before")["codes"] == []
+        assert moved[0].side("after")["codes"] == ["ADV-BROKEN-PHRASE"]
+
+    def test_the_same_advisories_on_both_sides_move_nothing(self, noisy_label: Path) -> None:
+        document = self._report(noisy_label)["documents"][0]
+        changes = compare_documents(document, document, key="label")
+        assert [c for c in changes if c.kind is Kind.ADVISORY_MOVED] == []
+
+    def test_an_advisory_is_not_filed_among_the_document_facts(
+        self, conforming_label: Path, noisy_label: Path
+    ) -> None:
+        """It is not a conclusion, and the kinds keep that visible."""
+        before = self._report(conforming_label)["documents"][0]
+        after = self._report(noisy_label)["documents"][0]
+        facts = [
+            c
+            for c in compare_documents(before, after, key="label")
+            if c.kind is Kind.DOCUMENT_FACT_MOVED
+        ]
+        assert all(c.field != "advisories" for c in facts)
+
+    def test_a_report_predating_the_channel_is_not_read_as_an_empty_one(
+        self, noisy_label: Path
+    ) -> None:
+        """The whole reason this is not a plain `.get(key, [])`.
+
+        Adding a key is append only within a schema version (ADR 0010), so a report
+        written before the channel existed declares the same `schema_version` as one
+        written after and is not refused. Reading its missing key as an empty list would
+        report an advisory appearing on every document of every diff spanning that
+        change, which is an absence rendered as a movement.
+        """
+        after = self._report(noisy_label)["documents"][0]
+        old_style = {k: v for k, v in after.items() if k != "advisories"}
+        assert "advisories" not in old_style
+
+        changes = compare_documents(old_style, after, key="label")
+        kinds = {c.kind for c in changes}
+        assert Kind.ADVISORIES_NOT_COMPARABLE in kinds
+        assert Kind.ADVISORY_MOVED not in kinds
+
+    def test_the_uncomparable_row_says_which_side_was_missing_it(self, noisy_label: Path) -> None:
+        after = self._report(noisy_label)["documents"][0]
+        old_style = {k: v for k, v in after.items() if k != "advisories"}
+        row = next(
+            c
+            for c in compare_documents(old_style, after, key="label")
+            if c.kind is Kind.ADVISORIES_NOT_COMPARABLE
+        )
+        assert row.side("after")["missing_from"] == "the earlier"
+        rendered = render_text([row])
+        assert "predates the channel" in rendered
+        assert "an absent key is not an empty list" in rendered
+
+    def test_a_missing_key_on_the_later_side_is_named_too(self, noisy_label: Path) -> None:
+        after = self._report(noisy_label)["documents"][0]
+        old_style = {k: v for k, v in after.items() if k != "advisories"}
+        row = next(
+            c
+            for c in compare_documents(after, old_style, key="label")
+            if c.kind is Kind.ADVISORIES_NOT_COMPARABLE
+        )
+        assert row.side("after")["missing_from"] == "the later"
+
+    def test_the_move_renders_with_both_sides_and_its_own_caveat(
+        self, conforming_label: Path, noisy_label: Path
+    ) -> None:
+        before = self._report(conforming_label)["documents"][0]
+        after = self._report(noisy_label)["documents"][0]
+        row = next(
+            c
+            for c in compare_documents(before, after, key="label")
+            if c.kind is Kind.ADVISORY_MOVED
+        )
+        rendered = render_text([row])
+        assert "ADV-BROKEN-PHRASE" in rendered
+        assert "in no count and no exit code" in rendered
+
+    def test_every_kind_this_module_defines_can_be_rendered(self) -> None:
+        """A kind with no branch in `_describe` falls through to the last one.
+
+        The renderer ends in a bare `return`, so a kind nobody wrote a branch for is
+        printed as "in the earlier report only", which is a sentence about something else
+        entirely. Two kinds were added here; this is what keeps a third from arriving
+        silently wrong.
+        """
+        sides = {
+            "advisories": [],
+            "codes": [],
+            "missing_from": "the earlier",
+            "status": "x",
+            "finding": "y",
+            "readability": "readable",
+        }
+        for kind in Kind:
+            row = Change(
+                kind=kind,
+                document="label",
+                check_id="PCL001",
+                field="readability",
+                before=dict(sides),
+                after=dict(sides),
+            )
+            rendered = render_text([row])
+            assert rendered.strip(), kind
+            if kind not in (Kind.DOCUMENT_ADDED, Kind.DOCUMENT_REMOVED):
+                assert "in the earlier report only" not in rendered, (
+                    f"{kind.value} has no branch in _describe and fell through to the "
+                    "document-removed wording"
+                )

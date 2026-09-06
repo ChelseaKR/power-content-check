@@ -17,6 +17,7 @@ from .checks import CheckContext
 from .citations import NOTICE
 from .diff import (
     DiffExit,
+    Kind,
     ReportUnreadable,
     SchemaMismatch,
     compare,
@@ -273,7 +274,12 @@ def _diff(args: argparse.Namespace) -> int:
     rendered = render_jsonl(changes) if args.jsonl else render_diff_text(changes)
     if rendered:
         print(rendered, end="")
-    return DiffExit.MOVED if changes else DiffExit.UNCHANGED
+    # `3` means something moved. "These two reports cannot be compared for advisories"
+    # is not a movement: it is this verb saying what it could not look at, which is a
+    # thing to print and not a thing to score. A row that only reports a limit must not
+    # make a diff of two identical conclusions read as a diff that found a difference.
+    moved = [c for c in changes if c.kind is not Kind.ADVISORIES_NOT_COMPARABLE]
+    return DiffExit.MOVED if moved else DiffExit.UNCHANGED
 
 
 def run() -> None:  # pragma: no cover - console script shim
