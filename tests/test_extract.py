@@ -116,9 +116,74 @@ class TestArtworkVersusText:
         """An enumeration failure must never print as a count of zero."""
         from power_content_check.extract import _pdf_basis
 
-        assert "could not be enumerated" in _pdf_basis(0, None).lower() and _pdf_basis(
-            0, None
+        assert "could not be enumerated" in _pdf_basis(0, None, False).lower() and _pdf_basis(
+            0, None, False
         ).startswith("Basis: the text layer")
+
+    @pytest.mark.parametrize("form", ["raw_gray", "ascii_hex", "long_keys"])
+    def test_an_inline_image_is_not_reported_as_no_picture(self, tmp_path: Path, form: str) -> None:
+        """The one document class where a picture IS the available explanation.
+
+        An inline image is bytes in the content stream, not an XObject, so
+        `count_images` cannot see it. The zero/zero sentence used to conclude
+        "A picture is not an available explanation" on exactly the documents
+        where a picture is the explanation, and `_bad` stamps that sentence on
+        every deviation. See ADR 0012.
+        """
+        from conftest import synthetic_inline_image_pdf
+
+        path = synthetic_inline_image_pdf(tmp_path / f"{form}.pdf", form=form)
+        document = self._read(path)
+
+        # The precondition: the resource-based count really is blind to it, so
+        # this test exercises the branch it means to and not some other one.
+        assert document.image_count == 0
+        assert document.vector_shape_count == 0
+
+        assert "A picture is not an available explanation" not in document.extraction_basis
+        assert "draws at least one image inline" in document.extraction_basis
+
+    def test_an_inline_image_is_seen_inside_a_form(self, tmp_path: Path) -> None:
+        """The walk follows Form XObjects, exactly as the paint walk does."""
+        from conftest import INLINE_IMAGE_FORMS, _pdf, _stream
+        from power_content_check.extract import draws_inline_image
+
+        objects = [
+            b"<< /Type /Catalog /Pages 2 0 R >>",
+            b"<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
+            b"<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Contents 4 0 R "
+            b"/Resources << /XObject << /Fm0 5 0 R >> >> >>",
+            _stream("", b"q 10 0 0 10 60 200 cm /Fm0 Do Q\n"),
+            _stream(
+                "/Type /XObject /Subtype /Form /BBox [0 0 1 1]",
+                INLINE_IMAGE_FORMS["raw_gray"],
+            ),
+        ]
+        path = tmp_path / "nested_inline.pdf"
+        path.write_bytes(_pdf(objects))
+
+        import pypdf
+
+        assert draws_inline_image(list(pypdf.PdfReader(path).pages)) is True
+
+    def test_an_unreadable_stream_does_not_rule_a_picture_out(self) -> None:
+        """Unknown is not zero here either.
+
+        If the content streams could not be read, the tool did not look for an
+        inline image and did not fail to find one. It must not print the
+        sentence that says a picture is unavailable.
+        """
+        from power_content_check.extract import _pdf_basis, draws_inline_image
+
+        class ExplodingStream(dict):  # type: ignore[type-arg]
+            def get_object(self) -> object:
+                raise RuntimeError("boom")
+
+        assert draws_inline_image([{"/Contents": ExplodingStream()}]) is None
+
+        basis = _pdf_basis(0, None, None)
+        assert "A picture is not an available explanation" not in basis
+        assert "nor an image drawn inline can be ruled out" in basis
 
     def test_counting_survives_a_hostile_content_stream(self, text_layer_pdf: Path) -> None:
         class ExplodingStream(dict):  # type: ignore[type-arg]

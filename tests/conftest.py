@@ -144,6 +144,54 @@ def synthetic_label_pdf(
     return path
 
 
+#: One inline image, in three encodings, as a content-stream fragment.
+#:
+#: An inline image is ``BI ... ID ... EI`` written straight into the content
+#: stream. Nothing about it appears in a resource dictionary, so a count that
+#: enumerates XObjects sees none of these. The three cover the ways the form
+#: varies in the wild: a raw one-pixel image, an ASCII-hex encoded strip of the
+#: shape a scanned phone number would have, and one written with full-length
+#: key names rather than the usual abbreviations.
+INLINE_IMAGE_FORMS: dict[str, bytes] = {
+    "raw_gray": (b"q 100 0 0 100 60 300 cm\nBI /W 1 /H 1 /CS /G /BPC 8 ID \x00 EI\nQ\n"),
+    "ascii_hex": (
+        b"q 200 0 0 40 60 300 cm\nBI /W 64 /H 16 /CS /G /BPC 1 /F /AHx ID\n"
+        + b"ff" * 128
+        + b">\nEI\nQ\n"
+    ),
+    "long_keys": (
+        b"q 100 0 0 100 60 300 cm\nBI /Width 1 /Height 1 /ColorSpace /DeviceRGB "
+        b"/BitsPerComponent 8 ID \x00\x00\x00 EI\nQ\n"
+    ),
+}
+
+
+def synthetic_inline_image_pdf(path: Path, form: str = "raw_gray") -> Path:
+    """A readable label that carries a picture no XObject declares."""
+    drawing = ["BT /F1 11 Tf"]
+    for index, line in enumerate(LABEL_LINES):
+        drawing.append(f"1 0 0 1 40 {740 - index * 18} Tm ({line}) Tj")
+    drawing.append("ET")
+    content = "\n".join(drawing).encode("ascii") + b"\n" + INLINE_IMAGE_FORMS[form]
+
+    objects = [
+        b"<< /Type /Catalog /Pages 2 0 R >>",
+        b"<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
+        b"<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Contents 4 0 R "
+        b"/Resources << /Font << /F1 5 0 R >> >> >>",
+        _stream("", content),
+        b"<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>",
+    ]
+    path.write_bytes(_pdf(objects))
+    return path
+
+
+@pytest.fixture
+def inline_image_pdf(tmp_path: Path) -> Path:
+    """A readable PDF whose only picture is drawn inline."""
+    return synthetic_inline_image_pdf(tmp_path / "inline_image.pdf")
+
+
 @pytest.fixture
 def text_layer_pdf(tmp_path: Path) -> Path:
     """A readable PDF with no image on it."""

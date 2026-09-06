@@ -64,6 +64,14 @@ IMAGES_UNCOUNTABLE_BASIS = (
 #: nothing. See ADR 0012.
 _PATH_PAINT_OPERATORS = frozenset({b"f", b"F", b"f*", b"S", b"s", b"B", b"B*", b"b", b"b*"})
 
+#: The operator pypdf reports for an inline image, the ``BI ... ID ... EI``
+#: form that draws a picture from bytes in the content stream instead of from
+#: an XObject. :func:`count_images` enumerates resources and cannot see one.
+#: It is not counted as an image; it is only looked for, because its presence
+#: is what decides whether a picture is an available explanation for missing
+#: text. See ADR 0012.
+_INLINE_IMAGE_OPERATORS = frozenset({b"INLINE IMAGE"})
+
 
 def _paint_clause(paint_count: int | None) -> str:
     if paint_count is None:
@@ -74,9 +82,26 @@ def _paint_clause(paint_count: int | None) -> str:
     return f"and paints {paint_count} vector {noun}"
 
 
-def _pdf_basis(image_count: int, paint_count: int | None) -> str:
+def _pdf_basis(image_count: int, paint_count: int | None, inline: bool | None) -> str:
     noun = "image" if image_count == 1 else "images"
     shapes = _paint_clause(paint_count)
+    # An inline image is a picture that no resource dictionary declares, so
+    # image_count is blind to it. These two branches come first, because the
+    # sentences below them would report that blindness as a property of the
+    # document. See ADR 0012.
+    if image_count == 0 and inline is True:
+        return (
+            "Basis: the text layer of this PDF, which declares no image "
+            f"resource but draws at least one image inline {shapes}. Text "
+            "that is drawn inside a picture or as a vector outline is not read."
+        )
+    if image_count == 0 and inline is None:
+        return (
+            "Basis: the text layer of this PDF, which declares no image "
+            "resource. Its content streams could not be read, so neither a "
+            "painted shape nor an image drawn inline can be ruled out. Text "
+            "that is drawn inside a picture or as a vector outline is not read."
+        )
     if image_count == 0 and paint_count == 0:
         return (
             "Basis: the text layer of this PDF, which declares no image and "
@@ -122,14 +147,20 @@ def _resolve_form(
     return obj, obj.get("/Resources"), marker
 
 
-def _paints_in(
+def _operators_in(
     stream_object: Any,
     resources: Any,
     pdf: Any,
     seen: set[tuple[int, int]],
     depth: int,
+    wanted: frozenset[bytes],
 ) -> int | None:
-    """Count path-painting operators in one content stream, forms included."""
+    """Count occurrences of ``wanted`` in one content stream, forms included.
+
+    One walk shared by the two things read out of a content stream, so that
+    they cannot disagree about how far they got. In particular an unparsable
+    stream is ``None`` for both, and never zero for one of them.
+    """
     from pypdf.generic import ContentStream
 
     if depth > MAX_FORM_DEPTH:
@@ -141,7 +172,7 @@ def _paints_in(
 
     total = 0
     for operands, operator in operations:
-        if operator in _PATH_PAINT_OPERATORS:
+        if operator in wanted:
             total += 1
             continue
         if operator != b"Do":
@@ -154,11 +185,52 @@ def _paints_in(
             if marker in seen:
                 continue
             seen.add(marker)
-        paints = _paints_in(obj, form_resources, pdf, seen, depth + 1)
-        if paints is None:
+        nested = _operators_in(obj, form_resources, pdf, seen, depth + 1, wanted)
+        if nested is None:
             return None
-        total += paints
+        total += nested
     return total
+
+
+def _paints_in(
+    stream_object: Any,
+    resources: Any,
+    pdf: Any,
+    seen: set[tuple[int, int]],
+    depth: int,
+) -> int | None:
+    """Count path-painting operators in one content stream, forms included."""
+    return _operators_in(stream_object, resources, pdf, seen, depth, _PATH_PAINT_OPERATORS)
+
+
+def _inline_images_in(
+    stream_object: Any,
+    resources: Any,
+    pdf: Any,
+    seen: set[tuple[int, int]],
+    depth: int,
+) -> int | None:
+    """Count inline images in one content stream, forms included."""
+    return _operators_in(stream_object, resources, pdf, seen, depth, _INLINE_IMAGE_OPERATORS)
+
+
+def _over_pages(pages: list[Any], walk: Any) -> int | None:
+    """Run one content-stream walk over every page, or ``None`` if unknown."""
+    try:
+        total = 0
+        for page in pages:
+            contents = page.get("/Contents")
+            if contents is None:
+                continue
+            found = walk(contents.get_object(), page.get("/Resources"), page.pdf, set(), 0)
+            if found is None:
+                return None
+            total += found
+        return total
+    except Exception:
+        # Never fatal, exactly like an uncountable image set: an unknown count
+        # downgrades the claim the tool makes about an absence.
+        return None
 
 
 def count_vector_paints(pages: list[Any]) -> int | None:
@@ -167,24 +239,31 @@ def count_vector_paints(pages: list[Any]) -> int | None:
     The companion to :func:`count_images`: images are what the page declares,
     painted paths are what the page does. Between them they cover the two ways
     a label can carry something its text layer lacks. What is not counted:
-    inline images (as with ``count_images``) and shading patterns. See ADR
-    0012 for why the sentence carries a number rather than a threshold.
+    inline images (they are looked for separately, by
+    :func:`draws_inline_image`) and shading patterns. See ADR 0012 for why the
+    sentence carries a number rather than a threshold.
     """
-    try:
-        total = 0
-        for page in pages:
-            contents = page.get("/Contents")
-            if contents is None:
-                continue
-            paints = _paints_in(contents.get_object(), page.get("/Resources"), page.pdf, set(), 0)
-            if paints is None:
-                return None
-            total += paints
-        return total
-    except Exception:
-        # Never fatal, exactly like an uncountable image set: an unknown count
-        # downgrades the claim the tool makes about an absence.
-        return None
+    return _over_pages(pages, _paints_in)
+
+
+def draws_inline_image(pages: list[Any]) -> bool | None:
+    """Whether any page draws an inline image, or ``None`` if that is unknown.
+
+    Not a count, and deliberately not folded into :func:`count_images`. That
+    function answers "how many images do these pages declare", its number is
+    published in every report, and an inline image is not declared anywhere:
+    it is bytes in the middle of a content stream. Widening that number would
+    change the meaning of a value already in the interface.
+
+    What this answers is the narrower question the extraction basis actually
+    rests on: is a picture an available explanation for text the extractor did
+    not find? An inline image makes it available, however it is counted. So
+    the tool looks for one before it prints the sentence that says a picture is
+    not available, and prints something weaker when it finds one or cannot
+    tell. See ADR 0012.
+    """
+    total = _over_pages(pages, _inline_images_in)
+    return None if total is None else total > 0
 
 
 @dataclass(frozen=True)
@@ -273,8 +352,12 @@ def count_images(pages: list[Any]) -> int | None:
     What is counted: image XObjects reachable from each page's resources,
     including those nested inside Form XObjects. What is not counted: inline
     images, and text drawn as vector paths. A count of zero therefore narrows
-    the possibilities without closing them, and the sentence the tool prints
-    for a zero count says exactly that.
+    the possibilities without closing them.
+
+    Because it does not close them, the zero-image sentence is not written
+    from this number alone. :func:`draws_inline_image` looks for the picture
+    this function cannot see, and the tool says a picture is not an available
+    explanation only where that search came back empty.
     """
     try:
         return sum(_images_in(page.get("/Resources"), set(), 0) for page in pages)
@@ -380,10 +463,11 @@ def _extract_pdf(path: Path, data: bytes, digest: str, min_chars: int) -> Extrac
         )
     images = count_images(pages)
     paints = count_vector_paints(pages)
+    inline = draws_inline_image(pages)
     if images is None:
         basis = IMAGES_UNCOUNTABLE_BASIS
     else:
-        basis = _pdf_basis(images, paints)
+        basis = _pdf_basis(images, paints, inline)
     return _build(
         path,
         digest,
