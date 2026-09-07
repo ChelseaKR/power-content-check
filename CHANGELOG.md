@@ -13,6 +13,32 @@ recorded as one.
 
 ### Added
 
+- **A machine-readable calibration census, and the README figures held to it**
+  (`scripts/check_regressions.py census`, `docs/calibration/census.json`,
+  `tests/test_calibration_census.py`). The four figures the README and
+  `docs/sources.md` publish about the calibration set (thirty four labels read; the
+  same two checks and only those two deviating; fifteen conforming on every label;
+  seventeen evaluable without a supplier name) were typed by hand from a run over a
+  cache git excludes, and nothing held them to anything. `census` reduces that run to
+  per-check counts plus the digests of the labels counted, and writes a committed file
+  carrying no supplier name, file name, path or URL, so the evidence is publishable
+  without redistributing a label. `--vintage` is required rather than defaulted,
+  because which label year was fetched is a fact about the fetch and a default would
+  publish a guess as a measurement.
+
+  Written as two tests rather than one. The obvious single test skips when the cache is
+  absent, which is a gate that cannot fail where it is watched: it would run on one
+  laptop and skip in CI. Only *regenerating* the census needs the cache, so that is the
+  only conditional part; the published figures are pinned to their literal values and to
+  the sentences they are written out in, and the comparison between figures and census is
+  a pure function driven from synthetic censuses on every run with a positive control and
+  four negative ones. A repeated label digest is refused on both sides, because one label
+  counted twice would inflate every figure in the census.
+
+  `docs/calibration/census.json` is not committed yet and cannot be produced here.
+  `docs/calibration/README.md` says so, and a test fails if that disclosure is removed
+  while the census is still missing, so the state is never silent.
+
 - **Published JSON Schemas for the run report and the catalog** (`schemas/report-v1.schema.json`,
   `schemas/catalog-v1.schema.json`), and a `schema` key in every JSON report naming the
   one it claims to meet. The report shape was pinned by `tests/test_report.py` and
