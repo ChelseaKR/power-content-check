@@ -13,6 +13,41 @@ recorded as one.
 
 ### Added
 
+- **`check --sarif` emits a SARIF 2.1.0 log** (`src/power_content_check/sarif.py`,
+  `tests/test_sarif.py`). `--json` is this tool's own shape, so anyone gating a
+  document in CI wrote an adapter first; SARIF is what code scanning and CI
+  annotation surfaces already read. It is a serialiser: it changes nothing the
+  tool concludes and leaves the exit code exactly as documented, and a test holds
+  both.
+
+  The work is in not losing the fail-closed contract in translation. SARIF's
+  natural shape is a list of problems found, and this tool's central claim is
+  about the checks it could not decide, so a log with an empty `results` array
+  would say the same thing for a clean label, an unreadable one and a run that
+  checked nothing. Three mappings keep those apart: a conforming check emits no
+  result and is still counted in `invocations`, so the denominator is visible; a
+  registered-but-unimplemented check is a `note` carrying its reason while an
+  implemented check that could not be decided is an `error`, because a permanent
+  catalog gap raised as an error in every run gets muted and the other case is
+  the one this project refuses to let read as a pass; and `executionSuccessful`
+  is false when nothing was checked, since a successful run with an empty results
+  array is a clean run to every consumer. Advisories stay out of results
+  entirely, under ADR 0013.
+
+  The log validates against the OASIS SARIF 2.1.0 errata01 schema with zero
+  errors, measured 2026-09-07. That schema is not vendored, so the committed gate
+  is structural rather than a schema run, and `tests/test_sarif.py` says so in
+  terms. Worth recording alongside it: the defect issue #42 cites as the reason
+  to validate, a `ruleIndex` resolving to a different rule than `ruleId` names,
+  is structurally valid SARIF and schema validation would not have caught it.
+  `test_every_rule_index_resolves_to_the_rule_its_id_names` is what does.
+
+  The `$schema` is OASIS's own address. The
+  `raw.githubusercontent.com/oasis-tcs/sarif-spec/master/Schemata/` path that
+  circulates in tooling was measured returning 404 on 2026-09-07, and a
+  `$schema` nobody can resolve is a broken contract nothing notices, because
+  nothing fetches it.
+
 - **A machine-readable calibration census, and the README figures held to it**
   (`scripts/check_regressions.py census`, `docs/calibration/census.json`,
   `tests/test_calibration_census.py`). The four figures the README and

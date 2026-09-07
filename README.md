@@ -313,6 +313,54 @@ registered check, including the ones that enforce nothing. A report listing only
 the checks that ran would read as a shorter clean run. Under this schema it is
 invalid.
 
+## SARIF, for code scanning and CI annotations
+
+`--json` is this tool's own shape, so anyone gating a document in CI writes an
+adapter first. `--sarif` emits a SARIF 2.1.0 log instead, which is the shape
+GitHub code scanning and most CI annotation surfaces already read:
+
+```bash
+uv run power-content-check check label.pdf --sarif > results.sarif
+```
+
+It is a serialiser. It changes nothing the tool concludes and the exit code is
+exactly the same as without it, which a test holds.
+
+What it must not do is lose the fail-closed contract in translation, because
+SARIF's natural shape is a list of problems found and this tool's central claim
+is about the checks it could not decide. So the mapping is deliberate:
+
+| what the run concluded | where it lands in the log |
+| --- | --- |
+| a deviation | a `result` at level `error` |
+| a conforming check | counted in `invocations[0].properties`, with no result |
+| a registered check that is not implemented | a `toolConfigurationNotification` at `note`, carrying its registered reason and blocker |
+| an implemented check that could not be decided | a `toolConfigurationNotification` at `error` |
+| an unreadable document | a `toolExecutionNotification` at `error`, and no results at all for that file |
+| an advisory | `runs[0].properties.advisories`, never a result |
+
+Three of those are the point.
+
+A conforming check emits no result and is still counted, so a consumer can see
+the denominator; a log carrying only deviations lets "we found nothing" and "we
+looked at nothing" render identically.
+
+The two kinds of not-evaluated are separated by severity rather than merged. A
+check the tool has never implemented is a documented, permanent property of the
+catalog, present in every run; raised as an error it would make every run scream
+and get muted. A check that is implemented and still could not be decided on
+this document is the other thing entirely, and it is the case this project
+refuses to let read as a pass. Both carry `properties.implemented`, so the
+distinction does not depend on reading the level.
+
+`executionSuccessful` is false when nothing was checked. SARIF uses that flag
+for "the tool failed to complete", and finding a deviation is not that. But a
+run over zero documents reporting success with an empty results array is
+indistinguishable from a clean run, and exit code 3 exists precisely because an
+empty denominator is never a pass.
+
+Uploading the log is out of scope: the tool writes a file and stops there.
+
 ## Which ruleset, for which year
 
 The tool encodes one ruleset and prints its identifier and effective date on
