@@ -1,0 +1,146 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://raw.githubusercontent.com/ChelseaKR/power-content-check/main/schemas/catalog-v1.schema.json",
+  "title": "power-content-check check catalog",
+  "description": "Schema version 1. Within one version every key is append only: removing a key, renaming one, or changing what a key holds is a breaking change and moves schema_version. See docs/adr/0010. additionalProperties is false everywhere, so a key this schema does not know about is a validation failure rather than a silent addition.",
+  "type": "array",
+  "items": {
+    "$ref": "#/$defs/check_spec"
+  },
+  "$defs": {
+    "check_spec": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "title",
+        "basis",
+        "implemented",
+        "what_it_looks_for",
+        "unimplemented_reason",
+        "blocker",
+        "citation"
+      ],
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "title": {
+          "type": "string"
+        },
+        "basis": {
+          "enum": [
+            "regulation_text",
+            "template_format"
+          ]
+        },
+        "implemented": {
+          "type": "boolean"
+        },
+        "what_it_looks_for": {
+          "type": "string"
+        },
+        "unimplemented_reason": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Why a registered check enforces nothing, or null when it does."
+        },
+        "blocker": {
+          "oneOf": [
+            {
+              "enum": [
+                "permanent",
+                "conditional"
+              ]
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Whether an unimplemented check can ever be implemented. Null when the check is implemented."
+        },
+        "citation": {
+          "$ref": "#/$defs/citation"
+        }
+      },
+      "allOf": [
+        {
+          "description": "A check that enforces nothing must say why and must say whether that is permanent. CheckSpec refuses the other combinations at construction; this is the same rule, stated in the format.",
+          "if": {
+            "properties": {
+              "implemented": {
+                "const": false
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "unimplemented_reason": {
+                "type": "string",
+                "minLength": 1
+              },
+              "blocker": {
+                "enum": [
+                  "permanent",
+                  "conditional"
+                ]
+              }
+            }
+          },
+          "else": {
+            "properties": {
+              "unimplemented_reason": {
+                "type": "null"
+              },
+              "blocker": {
+                "type": "null"
+              }
+            }
+          }
+        }
+      ]
+    },
+    "citation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "source_key",
+        "source_title",
+        "source_url",
+        "source_effective",
+        "source_retrieved",
+        "locator",
+        "quote"
+      ],
+      "properties": {
+        "source_key": {
+          "type": "string"
+        },
+        "source_title": {
+          "type": "string"
+        },
+        "source_url": {
+          "type": "string"
+        },
+        "source_effective": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "When the cited text took effect, or null when unstated."
+        },
+        "source_retrieved": {
+          "type": "string"
+        },
+        "locator": {
+          "type": "string"
+        },
+        "quote": {
+          "type": "string"
+        }
+      }
+    }
+  }
+}

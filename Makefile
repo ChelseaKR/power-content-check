@@ -5,7 +5,7 @@
 UV ?= uv
 AUDIT_REQUIREMENTS ?= .audit-requirements.txt
 
-.PHONY: help sync fmt lint typecheck test security verify clean catalog
+.PHONY: help sync fmt lint typecheck test security verify clean catalog schemas
 
 help:
 	@echo "sync       install the locked dependency set"
@@ -16,6 +16,7 @@ help:
 	@echo "security   bandit and pip-audit"
 	@echo "verify     everything above, in order; the gate"
 	@echo "catalog    print every registered check and the requirement it cites"
+	@echo "schemas    rewrite schemas/ from the model (the gate is a test, not this)"
 
 sync:
 	$(UV) sync --locked
@@ -50,6 +51,12 @@ verify: lint typecheck test security
 
 catalog: sync
 	$(UV) run power-content-check catalog
+
+# Regenerating is a convenience. The gate is tests/test_schemas.py, which fails
+# when the committed files and the builders disagree, so a stale schema is a red
+# test rather than something `make verify` quietly rewrites underneath you.
+schemas: sync
+	$(UV) run python scripts/gen_schemas.py
 
 clean:
 	rm -rf .pytest_cache .ruff_cache .mypy_cache .coverage htmlcov dist build

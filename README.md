@@ -280,6 +280,39 @@ do is turn "the tool cannot tell" into "the tool found it". It cannot produce a
 deviation, and a test holds that. See
 [docs/adr/0008](docs/adr/0008-column-geometry-decides-which-cell.md).
 
+## Validating a report
+
+The JSON report and the JSON catalog each have a published JSON Schema, in
+`schemas/`:
+
+```bash
+uv run power-content-check check label.pdf --json > report.json
+uv run python -c "
+import json, sys
+from jsonschema import Draft202012Validator
+Draft202012Validator(json.load(open('schemas/report-v1.schema.json'))).validate(
+    json.load(open('report.json')))
+print('valid')
+"
+```
+
+Every report names the schema it claims to meet in its own `schema` key, so a
+file that has travelled away from this repository still says what it is
+supposed to satisfy.
+
+The schemas are generated from the model by `make schemas`, and a test holds the
+committed files equal to the generators, so they cannot drift from the code.
+`additionalProperties` is false at every level: under
+[ADR 0010](docs/adr/0010-reports-carry-a-schema-version.md) a new key is a
+deliberate append within schema version 1, and a schema that tolerated unknown
+keys would let one arrive unannounced.
+
+One promise the schema carries that is worth naming, because it is the tool's
+central refusal expressed as a format rule: a report must account for **every**
+registered check, including the ones that enforce nothing. A report listing only
+the checks that ran would read as a shorter clean run. Under this schema it is
+invalid.
+
 ## Which ruleset, for which year
 
 The tool encodes one ruleset and prints its identifier and effective date on
