@@ -11,7 +11,45 @@ recorded as one.
 
 ## [Unreleased]
 
-Nothing yet.
+### Fixed
+
+- **The release workflow's publish job could never have succeeded, and its two
+  jobs contradicted each other.** `verify-tag` requires an **annotated** tag --
+  `git cat-file -t "${TAG}"` must print `tag`, because a lightweight tag carries
+  no signature to verify. `publish` then read `/git/ref/tags/<tag>` and passed
+  `.object.sha` to `gh release create --target`. On an annotated tag that field
+  is the **tag object**, not the commit, and `--target` wants a commitish. So
+  every tag the first job would accept was one the second job could not publish.
+
+  Measured on the first ever dispatch of this workflow, 2026-09-07 for `v0.1.0`:
+  `verify-tag` passed in full, and `publish` died on `HTTP 500` from the releases
+  API having handed it `03241d92` (the tag object) where `a258c77` (the commit)
+  was needed. A `500` names neither the field nor either SHA, which is why
+  reading the workflow was the only way to find it.
+
+  It survived because `release.yml` triggers on `workflow_dispatch` only: no
+  push, no pull request: so **nothing in CI has ever executed a line of it**. An
+  unexercised release path is unguarded code in a file the merge gate never runs.
+
+  The publish job now reads the ref once, keeps the object type as well as the
+  SHA, refuses anything that is not a tag object, and dereferences it through
+  `/git/tags/<sha>` to the commit. One read, because re-reading would reopen the
+  window that job's design exists to close: a tag moved between the two jobs must
+  not slip through.
+
+  `tests/test_release_workflow.py` is the guard, since CI cannot be. It pins
+  three facts whose violation is silent: that publishing depends on
+  verification, that the signature check demands an annotated tag, and that the
+  SHA handed to `--target` comes from dereferencing the tag object. The
+  dependency assertion **walks the `needs:` closure** rather than substring
+  matching, because the word "verify" appears in that file for several unrelated
+  reasons and a substring test passes on a workflow whose edge has been cut.
+  Both were driven by controls: restoring the original one-line lookup turned
+  `test_the_published_target_is_dereferenced_from_the_tag_object` red naming the
+  two endpoints, and deleting `needs: verify-tag` turned
+  `test_publishing_depends_on_the_verification_job` red: each with the mutation
+  asserted to have landed via `git hash-object` first, and the baseline hash
+  re-asserted after restoring.
 
 ## [0.1.0] - 2026-09-07
 
