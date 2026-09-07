@@ -1,0 +1,745 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://raw.githubusercontent.com/ChelseaKR/power-content-check/main/schemas/report-v1.schema.json",
+  "title": "power-content-check run report",
+  "description": "Schema version 1. Within one version every key is append only: removing a key, renaming one, or changing what a key holds is a breaking change and moves schema_version. See docs/adr/0010. additionalProperties is false everywhere, so a key this schema does not know about is a validation failure rather than a silent addition.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "schema_version",
+    "tool",
+    "tool_version",
+    "ruleset_id",
+    "ruleset_effective",
+    "generated_at",
+    "notice",
+    "skipped",
+    "summary",
+    "exit_code",
+    "documents"
+  ],
+  "properties": {
+    "schema": {
+      "const": "https://raw.githubusercontent.com/ChelseaKR/power-content-check/main/schemas/report-v1.schema.json",
+      "description": "Where the contract this report claims to meet is published."
+    },
+    "schema_version": {
+      "const": 1
+    },
+    "tool": {
+      "type": "string"
+    },
+    "tool_version": {
+      "type": "string"
+    },
+    "ruleset_id": {
+      "type": "string"
+    },
+    "ruleset_effective": {
+      "type": "string"
+    },
+    "generated_at": {
+      "type": "string"
+    },
+    "notice": {
+      "type": "string",
+      "description": "The standing disclaimer. A deviation is a property of a document, not a compliance determination and not evidence of anything a named supplier did."
+    },
+    "skipped": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Files inside a named directory that are not a supported label format. Named rather than dropped in silence. Not documents, and in no count."
+    },
+    "summary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "documents_checked",
+        "documents_readable",
+        "documents_unreadable",
+        "conforms",
+        "does_not_conform",
+        "not_evaluated",
+        "advisories"
+      ],
+      "properties": {
+        "documents_checked": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "documents_readable": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "documents_unreadable": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "conforms": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "does_not_conform": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "not_evaluated": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "advisories": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    },
+    "exit_code": {
+      "enum": [
+        0,
+        1,
+        2,
+        3,
+        64
+      ],
+      "description": "Highest first: 3 nothing was checked, 2 something could not be evaluated, 1 a deviation was found, 0 every implemented check conformed. An empty denominator is never a pass."
+    },
+    "documents": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/document"
+      }
+    }
+  },
+  "$defs": {
+    "document": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "path",
+        "readability",
+        "unreadable_reason",
+        "sha256",
+        "page_count",
+        "image_count",
+        "vector_shape_count",
+        "extraction_basis",
+        "counts",
+        "results",
+        "advisories"
+      ],
+      "properties": {
+        "path": {
+          "type": "string"
+        },
+        "readability": {
+          "enum": [
+            "readable",
+            "unreadable"
+          ]
+        },
+        "unreadable_reason": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Why the document could not be read, or null when it was read."
+        },
+        "sha256": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Digest of the bytes checked, or null."
+        },
+        "page_count": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "description": "Pages, or null when the input is not paginated or could not be read."
+        },
+        "image_count": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "description": "Raster images the document declares, or null when that is unknown. Not a regulatory quantity: it qualifies what an absence finding is entitled to mean. Null is not zero."
+        },
+        "vector_shape_count": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "description": "Times the document paints a vector path, or null when unknown. See docs/adr/0012. Null is not zero."
+        },
+        "extraction_basis": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "What the tool was able to look at, or null when it read nothing."
+        },
+        "counts": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "conforms",
+            "does_not_conform",
+            "not_evaluated"
+          ],
+          "properties": {
+            "conforms": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "does_not_conform": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "not_evaluated": {
+              "type": "integer",
+              "minimum": 0
+            }
+          }
+        },
+        "results": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/check_result"
+          },
+          "description": "Every registered check, whether or not it enforces anything. The allOf below requires each registered id to appear, so a report that dropped a not-evaluated check is invalid.",
+          "allOf": [
+            {
+              "contains": {
+                "type": "object",
+                "required": [
+                  "check_id"
+                ],
+                "properties": {
+                  "check_id": {
+                    "const": "PCL001"
+                  }
+                }
+              }
+            },
+            {
+              "contains": {
+                "type": "object",
+                "required": [
+                  "check_id"
+                ],
+                "properties": {
+                  "check_id": {
+                    "const": "PCL002"
+                  }
+                }
+              }
+            },
+            {
+              "contains": {
+                "type": "object",
+                "required": [
+                  "check_id"
+                ],
+                "properties": {
+                  "check_id": {
+                    "const": "PCL003"
+                  }
+                }
+              }
+            },
+            {
+              "contains": {
+                "type": "object",
+                "required": [
+                  "check_id"
+                ],
+                "properties": {
+                  "check_id": {
+                    "const": "PCL004"
+                  }
+                }
+              }
+            },
+            {
+              "contains": {
+                "type": "object",
+                "required": [
+                  "check_id"
+                ],
+                "properties": {
+                  "check_id": {
+                    "const": "PCL005"
+                  }
+                }
+              }
+            },
+            {
+              "contains": {
+                "type": "object",
+                "required": [
+                  "check_id"
+                ],
+                "properties": {
+                  "check_id": {
+                    "const": "PCL006"
+                  }
+                }
+              }
+            },
+            {
+              "contains": {
+                "type": "object",
+                "required": [
+                  "check_id"
+                ],
+                "properties": {
+                  "check_id": {
+                    "const": "PCL007"
+                  }
+                }
+              }
+            },
+            {
+              "contains": {
+                "type": "object",
+                "required": [
+                  "check_id"
+                ],
+                "properties": {
+                  "check_id": {
+                    "const": "PCL008"
+                  }
+                }
+              }
+            },
+            {
+              "contains": {
+                "type": "object",
+                "required": [
+                  "check_id"
+                ],
+                "properties": {
+                  "check_id": {
+                    "const": "PCL009"
+                  }
+                }
+              }
+            },
+            {
+              "contains": {
+                "type": "object",
+                "required": [
+                  "check_id"
+                ],
+                "properties": {
+                  "check_id": {
+                    "const": "PCL010"
+                  }
+                }
+              }
+            },
+            {
+              "contains": {
+                "type": "object",
+                "required": [
+                  "check_id"
+                ],
+                "properties": {
+                  "check_id": {
+                    "const": "PCL011"
+                  }
+                }
+              }
+            },
+            {
+              "contains": {
+                "type": "object",
+                "required": [
+                  "check_id"
+                ],
+                "properties": {
+                  "check_id": {
+                    "const": "PCL012"
+                  }
+                }
+              }
+            },
+            {
+              "contains": {
+                "type": "object",
+                "required": [
+                  "check_id"
+                ],
+                "properties": {
+                  "check_id": {
+                    "const": "PCL013"
+                  }
+                }
+              }
+            },
+            {
+              "contains": {
+                "type": "object",
+                "required": [
+                  "check_id"
+                ],
+                "properties": {
+                  "check_id": {
+                    "const": "PCL014"
+                  }
+                }
+              }
+            },
+            {
+              "contains": {
+                "type": "object",
+                "required": [
+                  "check_id"
+                ],
+                "properties": {
+                  "check_id": {
+                    "const": "PCL015"
+                  }
+                }
+              }
+            },
+            {
+              "contains": {
+                "type": "object",
+                "required": [
+                  "check_id"
+                ],
+                "properties": {
+                  "check_id": {
+                    "const": "PCL016"
+                  }
+                }
+              }
+            },
+            {
+              "contains": {
+                "type": "object",
+                "required": [
+                  "check_id"
+                ],
+                "properties": {
+                  "check_id": {
+                    "const": "PCL017"
+                  }
+                }
+              }
+            },
+            {
+              "contains": {
+                "type": "object",
+                "required": [
+                  "check_id"
+                ],
+                "properties": {
+                  "check_id": {
+                    "const": "PCL018"
+                  }
+                }
+              }
+            },
+            {
+              "contains": {
+                "type": "object",
+                "required": [
+                  "check_id"
+                ],
+                "properties": {
+                  "check_id": {
+                    "const": "PCL019"
+                  }
+                }
+              }
+            },
+            {
+              "contains": {
+                "type": "object",
+                "required": [
+                  "check_id"
+                ],
+                "properties": {
+                  "check_id": {
+                    "const": "PCL020"
+                  }
+                }
+              }
+            },
+            {
+              "contains": {
+                "type": "object",
+                "required": [
+                  "check_id"
+                ],
+                "properties": {
+                  "check_id": {
+                    "const": "PCL021"
+                  }
+                }
+              }
+            },
+            {
+              "contains": {
+                "type": "object",
+                "required": [
+                  "check_id"
+                ],
+                "properties": {
+                  "check_id": {
+                    "const": "PCL022"
+                  }
+                }
+              }
+            },
+            {
+              "contains": {
+                "type": "object",
+                "required": [
+                  "check_id"
+                ],
+                "properties": {
+                  "check_id": {
+                    "const": "PCL023"
+                  }
+                }
+              }
+            },
+            {
+              "contains": {
+                "type": "object",
+                "required": [
+                  "check_id"
+                ],
+                "properties": {
+                  "check_id": {
+                    "const": "PCL024"
+                  }
+                }
+              }
+            },
+            {
+              "contains": {
+                "type": "object",
+                "required": [
+                  "check_id"
+                ],
+                "properties": {
+                  "check_id": {
+                    "const": "PCL025"
+                  }
+                }
+              }
+            },
+            {
+              "contains": {
+                "type": "object",
+                "required": [
+                  "check_id"
+                ],
+                "properties": {
+                  "check_id": {
+                    "const": "PCL026"
+                  }
+                }
+              }
+            },
+            {
+              "contains": {
+                "type": "object",
+                "required": [
+                  "check_id"
+                ],
+                "properties": {
+                  "check_id": {
+                    "const": "PCL027"
+                  }
+                }
+              }
+            },
+            {
+              "contains": {
+                "type": "object",
+                "required": [
+                  "check_id"
+                ],
+                "properties": {
+                  "check_id": {
+                    "const": "PCL028"
+                  }
+                }
+              }
+            },
+            {
+              "contains": {
+                "type": "object",
+                "required": [
+                  "check_id"
+                ],
+                "properties": {
+                  "check_id": {
+                    "const": "PCL029"
+                  }
+                }
+              }
+            },
+            {
+              "contains": {
+                "type": "object",
+                "required": [
+                  "check_id"
+                ],
+                "properties": {
+                  "check_id": {
+                    "const": "PCL030"
+                  }
+                }
+              }
+            },
+            {
+              "contains": {
+                "type": "object",
+                "required": [
+                  "check_id"
+                ],
+                "properties": {
+                  "check_id": {
+                    "const": "PCL031"
+                  }
+                }
+              }
+            },
+            {
+              "contains": {
+                "type": "object",
+                "required": [
+                  "check_id"
+                ],
+                "properties": {
+                  "check_id": {
+                    "const": "PCL032"
+                  }
+                }
+              }
+            },
+            {
+              "contains": {
+                "type": "object",
+                "required": [
+                  "check_id"
+                ],
+                "properties": {
+                  "check_id": {
+                    "const": "PCL033"
+                  }
+                }
+              }
+            },
+            {
+              "contains": {
+                "type": "object",
+                "required": [
+                  "check_id"
+                ],
+                "properties": {
+                  "check_id": {
+                    "const": "PCL034"
+                  }
+                }
+              }
+            },
+            {
+              "contains": {
+                "type": "object",
+                "required": [
+                  "check_id"
+                ],
+                "properties": {
+                  "check_id": {
+                    "const": "PCL035"
+                  }
+                }
+              }
+            }
+          ]
+        },
+        "advisories": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/advisory"
+          }
+        }
+      }
+    },
+    "check_result": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "check_id",
+        "status",
+        "finding",
+        "detail"
+      ],
+      "properties": {
+        "check_id": {
+          "type": "string",
+          "description": "The registered check this result is about."
+        },
+        "status": {
+          "enum": [
+            "conforms",
+            "does_not_conform",
+            "not_evaluated"
+          ],
+          "description": "not_evaluated is never a pass. A run that could not measure something says so here and in the exit code."
+        },
+        "finding": {
+          "type": "string"
+        },
+        "detail": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Further explanation, or null."
+        }
+      }
+    },
+    "advisory": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "code",
+        "observation",
+        "where",
+        "notice"
+      ],
+      "description": "An observation no published requirement covers. It carries no status, is in no count and reaches no exit code. See docs/adr/0013.",
+      "properties": {
+        "code": {
+          "enum": [
+            "ADV-BROKEN-PHRASE",
+            "ADV-DATA-YEAR-MISMATCH",
+            "ADV-TEXTLESS-PAGE"
+          ]
+        },
+        "observation": {
+          "type": "string"
+        },
+        "where": {
+          "type": "string"
+        },
+        "notice": {
+          "const": "No published requirement covers this observation. It is a description of the document, not a finding about it, and it is in no count and no exit code.",
+          "description": "Fixed text, attached by the type rather than by the caller, so every advisory carries the same disclaimer."
+        }
+      }
+    }
+  }
+}

@@ -237,6 +237,14 @@ class DocumentReport:
 #: for a consumer.
 SCHEMA_VERSION = 1
 
+#: Where the published JSON Schemas for this shape live. Held here beside
+#: SCHEMA_VERSION rather than in :mod:`power_content_check.schemas`, because a
+#: report carries the report schema's id and the schema module reads the model:
+#: the other direction would be a cycle. See docs/adr/0010 and schemas/.
+SCHEMA_BASE = "https://raw.githubusercontent.com/ChelseaKR/power-content-check/main/schemas"
+REPORT_SCHEMA_ID = f"{SCHEMA_BASE}/report-v1.schema.json"
+CATALOG_SCHEMA_ID = f"{SCHEMA_BASE}/catalog-v1.schema.json"
+
 
 class ExitCode:
     """Process exit codes.
@@ -310,6 +318,9 @@ class RunReport:
 
     def to_dict(self) -> dict[str, Any]:
         return {
+            # The contract before the content: a consumer holding only this file
+            # can find what it is supposed to satisfy, and validate it.
+            "schema": REPORT_SCHEMA_ID,
             "schema_version": SCHEMA_VERSION,
             "tool": self.tool,
             "tool_version": self.tool_version,

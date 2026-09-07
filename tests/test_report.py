@@ -7,7 +7,7 @@ from pathlib import Path
 
 from power_content_check.checks import CheckContext
 from power_content_check.engine import check_paths
-from power_content_check.model import SCHEMA_VERSION, ExitCode
+from power_content_check.model import REPORT_SCHEMA_ID, SCHEMA_VERSION, ExitCode
 from power_content_check.report import render_catalog, render_json, render_text
 
 SUPPLIER = "Example Municipal Utility District"
@@ -42,6 +42,7 @@ class TestJson:
             render_json(check_paths([conforming_label], CheckContext(supplier_name=SUPPLIER)))
         )
         assert set(payload) == {
+            "schema",
             "schema_version",
             "tool",
             "tool_version",
@@ -55,6 +56,10 @@ class TestJson:
             "documents",
         }
         assert payload["schema_version"] == SCHEMA_VERSION
+        # The contract's own address. schemas/report-v1.schema.json holds the
+        # shape this block asserts, and tests/test_schemas.py holds the two
+        # equal, so a consumer can enforce here what this test enforces.
+        assert payload["schema"] == REPORT_SCHEMA_ID
         document = payload["documents"][0]
         assert set(document) == {
             "path",

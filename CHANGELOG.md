@@ -11,6 +11,37 @@ recorded as one.
 
 ## [Unreleased]
 
+### Added
+
+- **Published JSON Schemas for the run report and the catalog** (`schemas/report-v1.schema.json`,
+  `schemas/catalog-v1.schema.json`), and a `schema` key in every JSON report naming the
+  one it claims to meet. The report shape was pinned by `tests/test_report.py` and
+  described nowhere a stranger's tooling could read; a downstream script had to trust the
+  key names it happened to observe.
+  - The schemas are **generated from the model** by `make schemas`, and
+    `tests/test_schemas.py` holds the committed files equal to the generators, so they
+    cannot drift from the code. The enumerations, the exit codes and the set of registered
+    check identifiers are read off `Status`, `Basis`, `Blocker`, `Readability`, `ExitCode`
+    and the registry rather than typed out.
+  - **The fail-closed contract is now a property of the format.** A report must contain a
+    result for every registered check, including the ones that enforce nothing, expressed
+    as one `contains` clause per identifier. A report listing only the checks that ran
+    would previously have been merely smaller than expected; it is now invalid. A consumer
+    validating a report gets the guarantee this repository's own tests give.
+  - `additionalProperties` is false at every level, so under ADR 0010 an unannounced key is
+    a validation failure rather than a silent addition. `null` is spelled out on every
+    field that can hold it, because a page count the tool could not read is not a page
+    count of zero.
+  - The suite mutates a valid report eleven ways and requires a rejection for each: a
+    deleted key, an unknown key, a dropped `not_evaluated` result, a dropped `conforms`
+    result, a status outside the enumeration, an exit code the tool cannot emit, a report
+    claiming a different schema, an advisory without its notice, and three catalog
+    entries that break the implemented/blocker rule `CheckSpec` refuses at construction.
+    Without those, the suite would prove only that a permissive schema accepts real
+    reports.
+  - `jsonschema` is added to the dev dependency group only. The runtime dependency set is
+    still `pypdf` alone, and nothing in `src/` imports a validator.
+
 ### Fixed
 
 - **`diff`'s list of what it compares was held to nothing, and the first key added after it
