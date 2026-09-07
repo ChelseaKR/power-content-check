@@ -30,8 +30,9 @@ from .explain import UnknownCheck, explain
 from .explain import render_json as render_explain_json
 from .explain import render_text as render_explain_text
 from .extract import DEFAULT_MIN_TEXT_CHARS, SUPPORTED_SUFFIXES
-from .model import ExitCode
+from .model import ExitCode, RunReport
 from .report import render_catalog, render_json, render_text
+from .sarif import render_sarif
 
 _EPILOG = f"""\
 exit codes
@@ -117,6 +118,15 @@ def build_parser() -> argparse.ArgumentParser:
     )
     check.add_argument("--json", action="store_true", help="emit the report as JSON")
     check.add_argument(
+        "--sarif",
+        action="store_true",
+        help=(
+            "emit the report as a SARIF 2.1.0 log, for code scanning and CI "
+            "annotation surfaces. Redirect it to a file to upload it. Changes "
+            "nothing the tool concludes and nothing about the exit code."
+        ),
+    )
+    check.add_argument(
         "--verbose",
         "-v",
         action="store_true",
@@ -199,6 +209,20 @@ def build_parser() -> argparse.ArgumentParser:
     return parser
 
 
+def _render(report: RunReport, args: argparse.Namespace) -> str:
+    """One rendering of the run, in whichever shape was asked for.
+
+    All three read the same finished report and none of them changes a
+    conclusion or an exit code, which is what lets a caller pick a shape for
+    its consumer rather than for its meaning.
+    """
+    if args.sarif:
+        return render_sarif(report)
+    if args.json:
+        return render_json(report)
+    return render_text(report, args.verbose)
+
+
 def main(argv: Sequence[str] | None = None) -> int:
     parser = build_parser()
     args = parser.parse_args(argv)
@@ -213,6 +237,9 @@ def main(argv: Sequence[str] | None = None) -> int:
     if args.min_text_chars < 0:
         parser.error("--min-text-chars cannot be negative")
 
+    if args.command == "check" and args.json and args.sarif:
+        parser.error("--json and --sarif are two shapes of one report; ask for one")
+
     if args.command == "explain":
         return _explain(args, parser)
 
@@ -221,7 +248,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         # so in the same shape as any other run rather than printing a hint
         # that a script might read as success.
         report = check_paths([], CheckContext(), args.min_text_chars)
-        print(render_json(report) if args.json else render_text(report, args.verbose))
+        print(_render(report, args))
         return report.exit_code
 
     report = check_paths(
@@ -229,7 +256,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         CheckContext(supplier_name=args.supplier_name),
         args.min_text_chars,
     )
-    print(render_json(report) if args.json else render_text(report, args.verbose))
+    print(_render(report, args))
     if args.fingerprint:
         print(f"fingerprint: {fingerprint(report)}")
     return report.exit_code
