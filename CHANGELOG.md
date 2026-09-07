@@ -11,6 +11,10 @@ recorded as one.
 
 ## [Unreleased]
 
+Nothing yet.
+
+## [0.1.0] - 2026-09-07
+
 ### Added
 
 - **`check --sarif` emits a SARIF 2.1.0 log** (`src/power_content_check/sarif.py`,

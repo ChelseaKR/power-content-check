@@ -14,14 +14,15 @@ license: Apache-2.0
 # `version` mirrors the in-development version in pyproject.toml, which is the single
 # source of truth; tests/test_release_claims.py asserts the two agree.
 #
-# `date-released` is deliberately absent. It carried 2026-08-18 while `git tag --list`
-# was empty here and on origin, and no GitHub Release existed. Citation tooling prints
-# this field as the date the software was released, so anyone citing this tool was given
-# a release date for a release that never happened; the date was real, it was just the
-# date of something else. The same test ties its presence to a tag naming the declared
-# version, in both directions, so it returns when a release is cut and cannot be left
-# out of one.
+# `date-released` was absent for as long as nothing was tagged. It had carried 2026-08-18
+# while `git tag --list` was empty here and on origin and no GitHub Release existed, which
+# gave anyone citing this tool a release date for a release that never happened; the date
+# was real, it was just the date of something else. It is back because `v0.1.0` was cut on
+# the date below, and the date below is the date of that tag. tests/test_release_claims.py
+# ties this field to a tag naming the declared version in both directions, so it could not
+# have returned early and cannot be dropped now.
 version: 0.1.0
+date-released: 2026-09-07
 keywords:
   - california
   - power source disclosure
