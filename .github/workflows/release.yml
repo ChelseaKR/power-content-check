@@ -103,14 +103,37 @@ jobs:
     permissions:
       contents: write
     steps:
-      - name: Re-resolve the tag object through the API
+      # `/git/ref/tags/<tag>` on an ANNOTATED tag returns the tag *object*, not the
+      # commit, so `.object.sha` here is a tag SHA. `gh release create --target`
+      # wants a commitish, and handing it a tag object made the API answer
+      # `HTTP 500`: measured on the first ever run of this workflow, 2026-09-07,
+      # for v0.1.0: it passed 03241d92 (the tag object) where a258c77 (the commit)
+      # was needed, and a 500 tells the reader nothing about which of the two it is.
+      #
+      # This could never have worked. `verify-tag` above *requires* an annotated tag
+      # (`git cat-file -t "${TAG}"` must be `tag`), so every tag this workflow
+      # accepts resolves to a tag object here, and the two jobs contradicted each
+      # other. It survived because the workflow is `workflow_dispatch`-only and had
+      # never been dispatched: an unexercised release path is unguarded code.
+      #
+      # So: read the ref once, keep the type as well as the SHA, and dereference.
+      # One read, because re-reading would reopen the window this job's whole
+      # design is about: a tag moved between the two jobs must not slip through.
+      - name: Re-resolve the tag through the API and dereference it to a commit
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAG: ${{ inputs.tag }}
         run: |
-          sha="$(gh api "repos/${GITHUB_REPOSITORY}/git/ref/tags/${TAG}" --jq '.object.sha')"
-          test -n "${sha}"
-          echo "TAG_SHA=${sha}" >> "${GITHUB_ENV}"
+          ref="$(gh api "repos/${GITHUB_REPOSITORY}/git/ref/tags/${TAG}")"
+          object_type="$(printf '%s' "${ref}" | jq -r '.object.type')"
+          object_sha="$(printf '%s' "${ref}" | jq -r '.object.sha')"
+          # Refused rather than dereferenced-if-possible: verify-tag checked the
+          # signature on an annotated tag object, so publishing a lightweight tag
+          # here would publish something nothing verified.
+          test "${object_type}" = "tag"
+          commit_sha="$(gh api "repos/${GITHUB_REPOSITORY}/git/tags/${object_sha}" --jq '.object.sha')"
+          test -n "${commit_sha}"
+          echo "TAG_SHA=${commit_sha}" >> "${GITHUB_ENV}"
 
       - name: Create the release
         env:

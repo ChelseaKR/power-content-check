@@ -45,6 +45,12 @@ dev = [
   "hypothesis>=6",
   "jsonschema>=4.23",
   "types-jsonschema>=4.23",
+  # tests/test_release_workflow.py parses .github/workflows/release.yml, which is
+  # a file CI never executes and therefore a file only a test can guard. PyYAML
+  # was already installed here as a transitive dependency of bandit; declared
+  # rather than borrowed, so the guard does not disappear the day bandit drops it.
+  "pyyaml>=6.0",
+  "types-PyYAML>=6.0",
 ]
 
 # --------------------------------------------------------------------------
