@@ -92,7 +92,7 @@ class TestJson:
     def test_a_result_carries_exactly_its_documented_keys(self, conforming_label: Path) -> None:
         payload = json.loads(render_json(check_paths([conforming_label])))
         result = payload["documents"][0]["results"][0]
-        assert set(result) == {"check_id", "status", "finding", "detail"}
+        assert set(result) == {"check_id", "status", "finding", "detail", "evidence"}
 
     def test_unreadable_document_json(self, image_only_pdf: Path) -> None:
         payload = json.loads(render_json(check_paths([image_only_pdf])))

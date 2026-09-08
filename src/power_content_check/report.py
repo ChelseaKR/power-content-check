@@ -8,6 +8,7 @@ from typing import Any
 
 from .advisory import NOTICE as ADVISORY_NOTICE
 from .checks import BY_ID
+from .evidence import Evidence
 from .model import DocumentReport, ExitCode, Readability, RunReport, Status
 
 _MARK = {
@@ -63,6 +64,8 @@ def _render_document(document: DocumentReport, verbose: bool) -> list[str]:
         lines.append(_wrap(result.finding, "            "))
         if result.detail:
             lines.append(_wrap(result.detail, "            "))
+        if verbose and result.evidence is not None:
+            lines.append(_wrap(_render_evidence(result.evidence), "            "))
         lines.append(
             _wrap(
                 f"Cited: {spec.citation.locator} of {spec.citation.source.key} "
@@ -81,6 +84,25 @@ def _render_document(document: DocumentReport, verbose: bool) -> list[str]:
         f"{counts[Status.NOT_EVALUATED.value]} not evaluated."
     )
     return lines
+
+
+def _render_evidence(evidence: Evidence) -> str:
+    """One line saying where a run was read from.
+
+    Verbose only, because the JSON always carries it and a page number on every
+    conforming line would bury the deviations the default report exists to show.
+    Where the page is unknown the line says so rather than omitting the word:
+    "no single page" is a fact about the join of two pages, and dropping it
+    would leave the reader to assume page 1.
+    """
+    if evidence.cell_index is not None:
+        where = f"column cell {evidence.cell_index}"
+    elif evidence.page is None:
+        where = "no single page"
+    else:
+        where = f"page {evidence.page}"
+    prefix = "Nearest match read from" if evidence.partial else "Read from"
+    return f"{prefix} {where}: {evidence.run!r}"
 
 
 def _render_advisories(document: DocumentReport) -> list[str]:

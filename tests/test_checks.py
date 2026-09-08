@@ -195,24 +195,29 @@ class TestNarrowMatching:
         from power_content_check.checks import _fuel_row_present
 
         body = "GHG intensity figures exclude emissions from geothermal sources entirely."
-        present, how = _fuel_row_present(self._doc(tmp_path, body), "geothermal")
+        present, how, run = _fuel_row_present(self._doc(tmp_path, body), "geothermal")
         assert not present
         assert how == "absent"
+        assert run is None
 
     def test_a_geothermal_row_does_satisfy_it(self, tmp_path: Path) -> None:
         from power_content_check.checks import _fuel_row_present
 
-        present, how = _fuel_row_present(self._doc(tmp_path, "Geothermal 5% 0% 5%"), "geothermal")
+        present, how, run = _fuel_row_present(
+            self._doc(tmp_path, "Geothermal 5% 0% 5%"), "geothermal"
+        )
         assert present
         assert how == "row"
+        assert run == "geothermal 5% 0% 5%"
 
     def test_an_inline_figure_also_satisfies_it(self, tmp_path: Path) -> None:
         from power_content_check.checks import _fuel_row_present
 
         body = "Sources this year: geothermal 5%, solar 20%."
-        present, how = _fuel_row_present(self._doc(tmp_path, body), "geothermal")
+        present, how, run = _fuel_row_present(self._doc(tmp_path, body), "geothermal")
         assert present
         assert how == "figure"
+        assert run == "geothermal 5%"
 
 
 class TestTextTheExtractorBrokeApart:
@@ -778,7 +783,7 @@ class TestDigitsTheToolCanActuallyRead:
         document = self._doc(
             tmp_path, "Sources this year: geothermal " + _arabic_indic("5") + "%, solar 20%."
         )
-        assert _fuel_row_present(document, "geothermal") == (False, "absent")
+        assert _fuel_row_present(document, "geothermal") == (False, "absent", None)
 
     # Positive controls. Every one of these is the ASCII case of a test above,
     # and every one passes before and after the change.
@@ -799,4 +804,4 @@ class TestDigitsTheToolCanActuallyRead:
         from power_content_check.checks import _fuel_row_present
 
         document = self._doc(tmp_path, "Sources this year: geothermal 5%, solar 20%.")
-        assert _fuel_row_present(document, "geothermal") == (True, "figure")
+        assert _fuel_row_present(document, "geothermal") == (True, "figure", "geothermal 5%")

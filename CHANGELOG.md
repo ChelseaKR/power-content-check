@@ -55,6 +55,46 @@ recorded as one.
 
 ### Added
 
+- **Every result now says where it was read from.** A `conforms` result used to
+  say the element was found and never where, so an auditor checking that PCL004
+  really saw "Energy Commission" on page 2 had to re-extract the document and
+  search it by hand -- which is exactly what `docs/AUDITING.md` section 2 asked
+  the reader to do. This tool refuses to report a requirement without a citation
+  into the published text; it was not applying the same rule to its own
+  findings.
+
+  Each `CheckResult` gains an optional `evidence` block carrying the page, the
+  bounded normalised run the check matched, whether that run was truncated,
+  whether it is a near miss rather than the thing required, and a reconstructed
+  column-cell index where ADR 0008's column reading supplied it. `--verbose`
+  prints one line per result (`Read from page 2: '...'`); the JSON always
+  carries the block. `--no-evidence` omits it.
+
+  **The fence from ADR 0007 holds and is asserted mechanically.** Nothing in the
+  block can change a status: `src/power_content_check/evidence.py` is only ever
+  handed text a check has *already* matched, and `tests/test_evidence.py` runs
+  the same documents with collection on and off and compares statuses, details,
+  counts, exit code and the run fingerprint. The fingerprint never carried
+  `detail` and does not carry evidence either.
+
+  Three details a reader of a report needs. The run is **normalised text**, not
+  the bytes on the page, because that is the form the check compared against.
+  `page` is **null** rather than 1 whenever the run cannot be attributed to one
+  page -- plain-text input, or a phrase that exists only in the join of two
+  pages. And a **null block is not a claim about the document**: it means
+  collection was off, nothing was matched (an absence has no position), or the
+  run could not be located. It never means "somewhere else" -- a locator that
+  cannot find the text a check matched returns nothing rather than the nearest
+  thing it can find, which is the one way this block could have stopped being
+  evidence and become a second, weaker search.
+
+  `evidence` is a new key inside `report-v1`, which is append-only within a
+  version by the rule stated beside `SCHEMA_VERSION`, so the schema version does
+  not move. The key is always present and is `null` when there is nothing to
+  say, so a consumer can tell "nothing was cited" from "this producer had no
+  such concept". `schemas/report-v1.schema.json` and `tests/test_schemas.py`
+  carry it.
+
 - **`check --sarif` emits a SARIF 2.1.0 log** (`src/power_content_check/sarif.py`,
   `tests/test_sarif.py`). `--json` is this tool's own shape, so anyone gating a
   document in CI wrote an adapter first; SARIF is what code scanning and CI
