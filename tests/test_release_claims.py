@@ -23,9 +23,9 @@ portfolio on 2026-09-06, twenty public repositories were in that shape.
 Being pre-release is not the defect. Publishing the number in silence is. So
 the rule sorts the declared version into one of two states.
 
-*No tag exists*, which is where this repository is. Legitimate, and it passes,
-but only while the README says so where a reader arrives: the ``**Status:**``
-line, or the ``Release & Versioning`` row. The sentence has to name the version
+*No tag exists.* Legitimate, and it passes, but only while the README says so
+where a reader arrives: the ``**Status:**`` line, or the ``Release &
+Versioning`` row. The sentence has to name the version
 ``pyproject.toml`` declares, because that is what stops the disclosure going
 stale. A bump to ``0.2.0`` under a README still explaining ``0.1.0`` reads
 exactly like a current disclosure to anyone who does not diff the two.
@@ -34,6 +34,12 @@ exactly like a current disclosure to anyone who does not diff the two.
 reporting the declared version and the newest tag, because "the version is
 wrong" without both numbers sends the reader back to a shell to work out which
 two things disagree.
+
+This repository left the first state on 2026-09-08, when ``v0.1.0`` was signed
+and published; the README's ``**Status:**`` line and ``Release & Versioning``
+row moved with it, because this rule holds them to the tag in both directions.
+This paragraph did not, until it was corrected -- a module docstring is the one
+piece of prose in a repository that nothing reads and no gate checks.
 
 The second state is unreachable from this repository today, so it is driven
 from synthetic input on every run rather than waiting for a bad day, next to a
