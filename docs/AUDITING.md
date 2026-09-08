@@ -87,9 +87,48 @@ requirement and what the tool could see of the document. To reproduce one:
 2. **Read the extraction basis sentence** on the deviation. It says how much
    of the document the tool could see, which is what tells you whether an
    absence means anything at all. See section 4 below.
-3. **Find the cited text yourself** by the route in section 1.
-4. **Open the label and look**, which is the step no amount of tooling
+3. **Read the run it was read from.** `--verbose` prints a line under each
+   result saying where the tool read it: `Read from page 2: 'california
+   energy commission ...'`. The JSON report always carries the same thing as
+   an `evidence` block on every result. That is the step this document used
+   to ask you to do from scratch.
+4. **Find the cited text yourself** by the route in section 1.
+5. **Open the label and look**, which is the step no amount of tooling
    replaces and which the calibration record itself used.
+
+### What the evidence block does and does not say
+
+The run is **normalised text**, not the bytes on the page: it is the form the
+check compared against, so a reader reproduces the *match* rather than the
+typography. Dashes have become spaces, `&` has become ` and `, and the case is
+folded. That is why a run can look slightly unlike the label and still be the
+right run.
+
+- `page` is 1-based. It is **null** whenever the run cannot be attributed to
+  one page: plain-text input, which has no pages, and a phrase that exists only
+  in the join of two pages because it began on one and finished on the next.
+  Null is never written as page 1.
+- `truncated` is true when the run was cut to the reporting cap of 200
+  characters. A cut run carries an ellipsis at the cut, so a quotation is never
+  silently shortened.
+- `partial` is true when the run is the **nearest thing the check found**
+  rather than the thing the requirement asks for. PCL004 sets it when the label
+  carries "CEC" and not "Energy Commission". The text report writes those as
+  `Nearest match read from ...`.
+- `cell_index` names a reconstructed column cell instead of a page, for the one
+  check that reads the page column by column
+  ([adr/0008](adr/0008-column-geometry-decides-which-cell.md)).
+- **A null block is not a claim about the document.** It has three causes and
+  the report does not distinguish them: `--no-evidence` was passed, nothing was
+  matched (most deviations are the absence of something, and an absence has no
+  position), or the run could not be located. What it never means is "somewhere
+  else" -- a locator that cannot find the text a check matched reports nothing
+  rather than the nearest thing it can find.
+
+Nothing in the block can change a status, a count or the exit code.
+`--no-evidence` omits it, and `tests/test_evidence.py` runs the same documents
+both ways and asserts the statuses, details, counts, exit code and fingerprint
+are identical.
 
 Steps 1 to 3 are what `explain` does for you, and it shows each one:
 

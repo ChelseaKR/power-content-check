@@ -80,11 +80,57 @@ def _nullable(kind: str, description: str) -> dict[str, Any]:
     return {"type": [kind, "null"], "description": description}
 
 
+def _evidence_schema() -> dict[str, Any]:
+    return {
+        "type": "object",
+        "additionalProperties": False,
+        "required": ["page", "run", "truncated", "partial", "cell_index"],
+        "properties": {
+            "page": _nullable(
+                "integer",
+                "1-based page the run was read from, or null when it cannot be "
+                "attributed to one page: plain-text input, or a run that exists "
+                "only in the join of two pages. Never 0, and never guessed.",
+            ),
+            "run": {
+                "type": "string",
+                "description": (
+                    "The normalised text run the check matched, bounded. Normalised, "
+                    "not verbatim: it is the form the check compared against, so a "
+                    "reader reproduces the match rather than the typography."
+                ),
+            },
+            "truncated": {
+                "type": "boolean",
+                "description": (
+                    "True when the run was cut to the reporting cap. A cut run "
+                    "carries an ellipsis at the cut, so a quotation is never "
+                    "silently shortened."
+                ),
+            },
+            "partial": {
+                "type": "boolean",
+                "description": (
+                    "True when the run is the nearest thing the check found rather "
+                    "than the thing the requirement asks for. Only ever set on a "
+                    "deviation."
+                ),
+            },
+            "cell_index": _nullable(
+                "integer",
+                "Index of the reconstructed column cell the run was found in, when "
+                "ADR 0008's column reading supplied it; null otherwise. Cells are "
+                "read from the page-joined document, so they carry no page.",
+            ),
+        },
+    }
+
+
 def _check_result_schema() -> dict[str, Any]:
     return {
         "type": "object",
         "additionalProperties": False,
-        "required": ["check_id", "status", "finding", "detail"],
+        "required": ["check_id", "status", "finding", "detail", "evidence"],
         "properties": {
             "check_id": {
                 "type": "string",
@@ -99,6 +145,16 @@ def _check_result_schema() -> dict[str, Any]:
             },
             "finding": {"type": "string"},
             "detail": _nullable("string", "Further explanation, or null."),
+            "evidence": {
+                "oneOf": [{"$ref": "#/$defs/evidence"}, {"type": "null"}],
+                "description": (
+                    "Where the run this check matched was read from, or null. Null "
+                    "has three causes and none of them is a claim about the "
+                    "document: collection was off, nothing was matched (an absence "
+                    "has no position), or the run could not be located. It never "
+                    "means somewhere else. Nothing here can change a status."
+                ),
+            },
         },
     }
 
@@ -293,6 +349,7 @@ def report_schema(check_ids: tuple[str, ...]) -> dict[str, Any]:
         "$defs": {
             "document": _document_schema(check_ids),
             "check_result": _check_result_schema(),
+            "evidence": _evidence_schema(),
             "advisory": _advisory_schema(),
         },
     }

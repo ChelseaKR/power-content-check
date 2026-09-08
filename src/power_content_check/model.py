@@ -13,6 +13,7 @@ from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:  # a cycle at runtime: advisory reads LabelDocument, which reads nothing here
     from .advisory import Advisory
+    from .evidence import Evidence
 
 
 class Status(StrEnum):
@@ -162,6 +163,20 @@ class CheckResult:
     status: Status
     finding: str
     detail: str | None = None
+    #: Where in the document the run this check matched was read from, or None.
+    #:
+    #: None has three causes and the report does not distinguish them, because
+    #: none of them is a claim about the document: evidence collection was off,
+    #: nothing was matched (a deviation is the absence of something, and an
+    #: absence has no position), or the matched run could not be located. What
+    #: it never means is "somewhere else": a locator that cannot find the text
+    #: a check matched returns None rather than the nearest thing it can find.
+    #:
+    #: Excluded from :func:`power_content_check.engine.fingerprint` by
+    #: construction -- the fingerprint carries check_id, status and finding, and
+    #: nothing else -- so two runs that reached the same conclusions hash the
+    #: same whether or not either collected evidence. See ADR 0007.
+    evidence: Evidence | None = None
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -169,6 +184,7 @@ class CheckResult:
             "status": self.status.value,
             "finding": self.finding,
             "detail": self.detail,
+            "evidence": None if self.evidence is None else self.evidence.to_dict(),
         }
 
 

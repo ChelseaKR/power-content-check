@@ -133,6 +133,15 @@ def build_parser() -> argparse.ArgumentParser:
         help="list conforming and unimplemented checks as well as deviations",
     )
     check.add_argument(
+        "--no-evidence",
+        action="store_true",
+        help=(
+            "omit the page and text run each result was read from. Changes "
+            "nothing the tool concludes: statuses, exit code and fingerprint "
+            "are identical either way."
+        ),
+    )
+    check.add_argument(
         "--fingerprint",
         action="store_true",
         help="print a hash of the run's conclusions, excluding paths and timestamps",
@@ -253,7 +262,10 @@ def main(argv: Sequence[str] | None = None) -> int:
 
     report = check_paths(
         list(args.paths),
-        CheckContext(supplier_name=args.supplier_name),
+        CheckContext(
+            supplier_name=args.supplier_name,
+            collect_evidence=not args.no_evidence,
+        ),
         args.min_text_chars,
     )
     print(_render(report, args))

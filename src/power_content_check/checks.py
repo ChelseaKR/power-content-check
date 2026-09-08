@@ -35,6 +35,7 @@ from dataclasses import dataclass
 from decimal import Decimal
 
 from .citations import issued_format, reg
+from .evidence import Evidence, locate, locate_in_cell
 from .extract import LabelDocument
 from .model import Basis, Blocker, CheckResult, CheckSpec, Status
 
@@ -89,28 +90,51 @@ def _row_label(line: str) -> str:
     return _LEADING_JUNK.sub("", line)
 
 
+def _row_matching(doc: LabelDocument, term: str) -> str | None:
+    """The first row of the label that begins with ``term``, or None."""
+    for line in doc.normalized_lines:
+        label = _row_label(line)
+        if label.startswith(term):
+            return label
+    return None
+
+
 def _has_row(doc: LabelDocument, term: str) -> bool:
     """True when ``term`` begins a row of the label."""
-    return any(_row_label(line).startswith(term) for line in doc.normalized_lines)
+    return _row_matching(doc, term) is not None
 
 
-def _has_labelled_figure(doc: LabelDocument, term: str) -> bool:
-    """True when ``term`` is immediately followed by a percentage figure.
+def _labelled_figure(doc: LabelDocument, term: str) -> str | None:
+    """The run where ``term`` is immediately followed by a percentage figure.
 
     The intervening characters may not contain letters, which keeps prose that
     merely mentions a fuel type from satisfying a check that is about a row of
     the table.
     """
     pattern = rf"\b{re.escape(term)}\b[^a-z]{{0,40}}{_PERCENT}"
-    return re.search(pattern, doc.normalized) is not None
+    match = re.search(pattern, doc.normalized)
+    return None if match is None else match.group(0)
 
 
-def _fuel_row_present(doc: LabelDocument, term: str) -> tuple[bool, str]:
-    if _has_row(doc, term):
-        return True, "row"
-    if _has_labelled_figure(doc, term):
-        return True, "figure"
-    return False, "absent"
+def _has_labelled_figure(doc: LabelDocument, term: str) -> bool:
+    return _labelled_figure(doc, term) is not None
+
+
+def _fuel_row_present(doc: LabelDocument, term: str) -> tuple[bool, str, str | None]:
+    """Whether ``term`` is present, how it was found, and the run that found it.
+
+    The third element is what the matcher actually matched, so a caller can cite
+    it. Deriving a run from ``term`` instead would cite the regulation's
+    spelling rather than the document's, which is the difference between
+    evidence and a restatement of the question.
+    """
+    row = _row_matching(doc, term)
+    if row is not None:
+        return True, "row", row
+    figure = _labelled_figure(doc, term)
+    if figure is not None:
+        return True, "figure", figure
+    return False, "absent", None
 
 
 def _domains(doc: LabelDocument) -> list[str]:
@@ -131,9 +155,13 @@ def _domains(doc: LabelDocument) -> list[str]:
     return [m.group(0) for m in _DOMAIN.finditer(text)]
 
 
+def _phone_runs(doc: LabelDocument) -> list[str]:
+    """The raw text each telephone-number match covered, in document order."""
+    return [m.group(0).strip() for m in _PHONE.finditer(doc.raw_text)]
+
+
 def _phones(doc: LabelDocument) -> list[str]:
-    found = [m.group(0).strip() for m in _PHONE.finditer(doc.raw_text)]
-    normalised = {re.sub(r"[^0-9]", "", p)[-10:] for p in found}
+    normalised = {re.sub(r"[^0-9]", "", p)[-10:] for p in _phone_runs(doc)}
     return sorted(normalised)
 
 
@@ -193,6 +221,13 @@ class CheckContext:
     """Facts a check needs that the document cannot supply on its own."""
 
     supplier_name: str | None = None
+    #: Whether a result may carry where its run was read from.
+    #:
+    #: A collection switch rather than a rule: nothing a check concludes may
+    #: depend on it, and `tests/test_evidence.py` asserts that statuses and the
+    #: run fingerprint are identical either way. It lives here, and is read
+    #: only by `_where`, so a check cannot consult it by accident.
+    collect_evidence: bool = True
 
 
 CheckFn = Callable[[LabelDocument, CheckContext], CheckResult]
@@ -203,22 +238,65 @@ def _with_basis(doc: LabelDocument, detail: str | None) -> str:
     return " ".join(part for part in (detail, doc.extraction_basis) if part)
 
 
-def _ok(check_id: str, finding: str, detail: str | None = None) -> CheckResult:
-    return CheckResult(check_id, Status.CONFORMS, finding, detail)
+def _where(
+    doc: LabelDocument,
+    ctx: CheckContext,
+    matched: str,
+    *,
+    ignoring_spaces: bool = False,
+    partial: bool = False,
+) -> Evidence | None:
+    """Locate a run this check has already matched.
+
+    ``matched`` must be text the check's own matcher produced -- a literal it
+    compared, or ``match.group(0)``. Passing anything else would make this a
+    second, weaker search wearing a citation's clothes, which is the one way an
+    evidence block could stop being evidence.
+    """
+    if not ctx.collect_evidence:
+        return None
+    return locate(doc, matched, ignoring_spaces=ignoring_spaces, partial=partial)
 
 
-def _bad(doc: LabelDocument, check_id: str, finding: str, detail: str | None = None) -> CheckResult:
+def _ok(
+    check_id: str,
+    finding: str,
+    detail: str | None = None,
+    evidence: Evidence | None = None,
+) -> CheckResult:
+    return CheckResult(check_id, Status.CONFORMS, finding, detail, evidence)
+
+
+def _bad(
+    doc: LabelDocument,
+    check_id: str,
+    finding: str,
+    detail: str | None = None,
+    evidence: Evidence | None = None,
+) -> CheckResult:
     """A deviation, carrying the basis on which the tool looked.
 
     Every deviation this tool reports is the absence of something from text it
     could read. Whether that absence is a property of the document or a limit
     of extraction depends on what else the document is carrying, so the answer
     travels with the finding rather than living only in the documentation.
+
+    Most deviations carry no evidence, and that is not an omission: an absence
+    has no position. A deviation carries one only where the check itself found
+    a concrete run -- the nearest partial match, marked as partial, or the very
+    row the deviation is about.
     """
-    return CheckResult(check_id, Status.DOES_NOT_CONFORM, finding, _with_basis(doc, detail))
+    return CheckResult(
+        check_id, Status.DOES_NOT_CONFORM, finding, _with_basis(doc, detail), evidence
+    )
 
 
 def _unknown(check_id: str, finding: str, detail: str | None = None) -> CheckResult:
+    """Not evaluated, and never with evidence.
+
+    A check that could not run scanned nothing, so there is no run to cite. A
+    position attached here would describe the document rather than the result.
+    """
     return CheckResult(check_id, Status.NOT_EVALUATED, finding, detail)
 
 
@@ -239,7 +317,11 @@ def _pcl001(doc: LabelDocument, ctx: CheckContext) -> CheckResult:
 
     wanted = normalize(ctx.supplier_name)
     if wanted and wanted in doc.normalized:
-        return _ok("PCL001", f"The label carries the company name '{ctx.supplier_name}'.")
+        return _ok(
+            "PCL001",
+            f"The label carries the company name '{ctx.supplier_name}'.",
+            evidence=_where(doc, ctx, wanted),
+        )
     return _bad(
         doc,
         "PCL001",
@@ -251,8 +333,17 @@ def _pcl001(doc: LabelDocument, ctx: CheckContext) -> CheckResult:
 
 def _pcl002(doc: LabelDocument, ctx: CheckContext) -> CheckResult:
     phones = _phones(doc)
+    runs = _phone_runs(doc)
+    # One run cited for a finding that counts several. The count is the finding;
+    # the run is where a reader starts checking it. Citing all of them would put
+    # a list of telephone numbers into every report of a conforming label.
+    first_run = runs[0] if runs else ""
     if len(phones) >= 2:
-        return _ok("PCL002", f"{len(phones)} distinct telephone numbers appear on the label.")
+        return _ok(
+            "PCL002",
+            f"{len(phones)} distinct telephone numbers appear on the label.",
+            evidence=_where(doc, ctx, first_run),
+        )
     if len(phones) == 1:
         return _bad(
             doc,
@@ -260,6 +351,7 @@ def _pcl002(doc: LabelDocument, ctx: CheckContext) -> CheckResult:
             "Only one telephone number appears in the extracted text.",
             "Section 1393.1(c)(4) lists a telephone number for the retail supplier "
             "and a telephone number for the Energy Commission, which is two numbers.",
+            evidence=_where(doc, ctx, first_run, partial=True),
         )
     return _bad(
         doc,
@@ -277,6 +369,7 @@ def _pcl003(doc: LabelDocument, ctx: CheckContext) -> CheckResult:
             "PCL003",
             "A web address other than the Energy Commission's appears on the label.",
             f"Observed: {', '.join(sorted(set(others))[:5])}",
+            evidence=_where(doc, ctx, others[0]),
         )
     return _bad(
         doc,
@@ -289,12 +382,21 @@ def _pcl003(doc: LabelDocument, ctx: CheckContext) -> CheckResult:
 
 def _pcl004(doc: LabelDocument, ctx: CheckContext) -> CheckResult:
     if "energy commission" in doc.normalized:
-        return _ok("PCL004", "The label names the Energy Commission.")
+        return _ok(
+            "PCL004",
+            "The label names the Energy Commission.",
+            evidence=_where(doc, ctx, "energy commission"),
+        )
     observed = []
-    if re.search(r"\bcec\b", doc.normalized):
+    nearest = ""
+    abbreviation = re.search(r"\bcec\b", doc.normalized)
+    if abbreviation:
         observed.append("the abbreviation 'CEC'")
-    if any("energy.ca.gov" in d for d in _domains(doc)):
+        nearest = abbreviation.group(0)
+    commission_domains = [d for d in _domains(doc) if "energy.ca.gov" in d]
+    if commission_domains:
         observed.append("an energy.ca.gov web address")
+        nearest = nearest or commission_domains[0]
     seen = f"Present instead: {', '.join(observed)}. " if observed else ""
     return _bad(
         doc,
@@ -306,12 +408,20 @@ def _pcl004(doc: LabelDocument, ctx: CheckContext) -> CheckResult:
         f"{seen}"
         "The regulation nowhere defines 'CEC', so this check does not read the "
         "abbreviation as the name, and the web address is checked separately by PCL005.",
+        # The nearest thing present, marked partial: it is what the reader will
+        # be looking at, and it is expressly not what the regulation asks for.
+        evidence=_where(doc, ctx, nearest, partial=True) if nearest else None,
     )
 
 
 def _pcl005(doc: LabelDocument, ctx: CheckContext) -> CheckResult:
-    if any("energy.ca.gov" in d for d in _domains(doc)):
-        return _ok("PCL005", "The label carries an energy.ca.gov web address.")
+    commission = [d for d in _domains(doc) if "energy.ca.gov" in d]
+    if commission:
+        return _ok(
+            "PCL005",
+            "The label carries an energy.ca.gov web address.",
+            evidence=_where(doc, ctx, commission[0]),
+        )
     return _bad(
         doc,
         "PCL005",
@@ -324,9 +434,16 @@ def _pcl005(doc: LabelDocument, ctx: CheckContext) -> CheckResult:
 def _pcl006(doc: LabelDocument, ctx: CheckContext) -> CheckResult:
     missing: list[str] = []
     found: list[str] = []
+    first_run = ""
     for letter, term in REQUIRED_FUEL_TYPES:
-        present, _how = _fuel_row_present(doc, term)
+        present, _how, run = _fuel_row_present(doc, term)
         (found if present else missing).append(f"({letter}) {term}")
+        # The run cited is the first category in the regulation's own order that
+        # was found, not the last one looked at. Ten categories cannot each have
+        # a citation in one result, and an arbitrary one would be a worse answer
+        # than a stated rule.
+        if present and not first_run and run:
+            first_run = run
 
     conditional = [
         f"({letter}) {term}"
@@ -346,12 +463,21 @@ def _pcl006(doc: LabelDocument, ctx: CheckContext) -> CheckResult:
             f"from the extracted text: {', '.join(missing)}.",
             detail,
         )
-    return _ok("PCL006", "All 10 unconditional fuel type categories appear on the label.", detail)
+    return _ok(
+        "PCL006",
+        "All 10 unconditional fuel type categories appear on the label.",
+        detail,
+        evidence=_where(doc, ctx, first_run) if first_run else None,
+    )
 
 
 def _pcl007(doc: LabelDocument, ctx: CheckContext) -> CheckResult:
     if "renewables and zero carbon resources" in doc.normalized:
-        return _ok("PCL007", "The 'Renewables and Zero-Carbon Resources' group appears.")
+        return _ok(
+            "PCL007",
+            "The 'Renewables and Zero-Carbon Resources' group appears.",
+            evidence=_where(doc, ctx, "renewables and zero carbon resources"),
+        )
     return _bad(
         doc,
         "PCL007",
@@ -361,8 +487,13 @@ def _pcl007(doc: LabelDocument, ctx: CheckContext) -> CheckResult:
 
 
 def _pcl008(doc: LabelDocument, ctx: CheckContext) -> CheckResult:
-    if re.search(r"rps\s+eligible\s+renewables", doc.normalized):
-        return _ok("PCL008", "RPS-eligible renewables appear as a named subcategory.")
+    subcategory = re.search(r"rps\s+eligible\s+renewables", doc.normalized)
+    if subcategory:
+        return _ok(
+            "PCL008",
+            "RPS-eligible renewables appear as a named subcategory.",
+            evidence=_where(doc, ctx, subcategory.group(0)),
+        )
     return _bad(
         doc,
         "PCL008",
@@ -374,7 +505,11 @@ def _pcl008(doc: LabelDocument, ctx: CheckContext) -> CheckResult:
 
 def _pcl009(doc: LabelDocument, ctx: CheckContext) -> CheckResult:
     if "fossil fuels" in doc.normalized:
-        return _ok("PCL009", "The 'Fossil Fuels' group appears.")
+        return _ok(
+            "PCL009",
+            "The 'Fossil Fuels' group appears.",
+            evidence=_where(doc, ctx, "fossil fuels"),
+        )
     return _bad(
         doc,
         "PCL009",
@@ -387,7 +522,15 @@ def _pcl010(doc: LabelDocument, ctx: CheckContext) -> CheckResult:
     from .normalize import contains_ignoring_spaces
 
     text = doc.normalized
-    if "greenhouse gas emissions intensity" not in text and "ghg emissions intensity" not in text:
+    disclosure = next(
+        (
+            phrase
+            for phrase in ("greenhouse gas emissions intensity", "ghg emissions intensity")
+            if phrase in text
+        ),
+        "",
+    )
+    if not disclosure:
         return _bad(
             doc,
             "PCL010",
@@ -407,6 +550,7 @@ def _pcl010(doc: LabelDocument, ctx: CheckContext) -> CheckResult:
         return _ok(
             "PCL010",
             "The GHG emissions intensity is stated in pounds of CO2e per megawatt hour.",
+            evidence=_where(doc, ctx, disclosure),
         )
     missing = [
         name
@@ -424,12 +568,21 @@ def _pcl010(doc: LabelDocument, ctx: CheckContext) -> CheckResult:
         f"missing {', '.join(missing)}.",
         "Section 1393.1(c)(3) requires the figure to be expressed in pounds of CO2e "
         "per megawatt hour.",
+        # The disclosure is there and the units are not, so the run is a genuine
+        # partial match: it is the thing the reader has to look at to see what is
+        # missing from it.
+        evidence=_where(doc, ctx, disclosure, partial=True),
     )
 
 
 def _pcl011(doc: LabelDocument, ctx: CheckContext) -> CheckResult:
-    if re.search(r"retired\s+unbundled\s+recs?|unbundled\s+recs?\s+retired", doc.normalized):
-        return _ok("PCL011", "The label discloses retired unbundled RECs.")
+    retired = re.search(r"retired\s+unbundled\s+recs?|unbundled\s+recs?\s+retired", doc.normalized)
+    if retired:
+        return _ok(
+            "PCL011",
+            "The label discloses retired unbundled RECs.",
+            evidence=_where(doc, ctx, retired.group(0)),
+        )
     return _bad(
         doc,
         "PCL011",
@@ -454,6 +607,7 @@ def _pcl012(doc: LabelDocument, ctx: CheckContext) -> CheckResult:
                 return _ok(
                     "PCL012",
                     f"Unspecified power is annotated as primarily {group}.",
+                    evidence=_where(doc, ctx, match.group(0)),
                 )
         # A display bound, not a rule: the published text says nothing about
         # where the annotation ends, so the finding quotes a short run of what
@@ -466,6 +620,9 @@ def _pcl012(doc: LabelDocument, ctx: CheckContext) -> CheckResult:
             "begin with either of the two resource groups.",
             "Section 1393.1(c)(7) requires the annotation to identify either "
             "'Fossil Fuels' or 'Renewables and Zero-Carbon Resources'.",
+            # An annotation is present and names the wrong thing. Partial, because
+            # what the regulation asks for is not what was found.
+            evidence=_where(doc, ctx, match.group(0), partial=True),
         )
     return _bad(
         doc,
@@ -483,7 +640,14 @@ def _footnote_check(check_id: str, lead: str, ordinal: str) -> CheckFn:
         from .normalize import contains_ignoring_spaces
 
         if contains_ignoring_spaces(doc.normalized, lead):
-            return _ok(check_id, f"The footnote required by section 1393.1(l)({ordinal}) appears.")
+            return _ok(
+                check_id,
+                f"The footnote required by section 1393.1(l)({ordinal}) appears.",
+                # Located ignoring spaces for the same reason it was matched that
+                # way: a subscript splits a word into two text runs, and the run
+                # cited has to be the one on the page, not a rebuilt one.
+                evidence=_where(doc, ctx, lead, ignoring_spaces=True),
+            )
         return _bad(
             doc,
             check_id,
@@ -548,6 +712,7 @@ def _pcl016(doc: LabelDocument, ctx: CheckContext) -> CheckResult:
                 "PCL016",
                 "The label separately discloses the statewide figures.",
                 f"Matched the rendering '{rendering}'.",
+                evidence=_where(doc, ctx, rendering, ignoring_spaces=True),
             )
 
     # A column heading is not prose. On the labels the Energy Commission
@@ -568,6 +733,10 @@ def _pcl016(doc: LabelDocument, ctx: CheckContext) -> CheckResult:
                 "because the heading wraps onto a second line and extraction reads "
                 "across the wrap; the position of each word on the page puts them back "
                 "in the same cell.",
+                # Cited from the cell, because that is where it was found. The
+                # page-joined text does not contain this run in order, so locating
+                # it there would cite a run that is not the one the check read.
+                evidence=locate_in_cell(doc, recovered) if ctx.collect_evidence else None,
             )
         return _unknown(
             "PCL016",
@@ -599,7 +768,11 @@ def _pcl016(doc: LabelDocument, ctx: CheckContext) -> CheckResult:
 def _pcl017(doc: LabelDocument, ctx: CheckContext) -> CheckResult:
     match = _YEAR_TITLE.search(doc.normalized)
     if match:
-        return _ok("PCL017", f"The label identifies its data year as {match.group(1)}.")
+        return _ok(
+            "PCL017",
+            f"The label identifies its data year as {match.group(1)}.",
+            evidence=_where(doc, ctx, match.group(0)),
+        )
     return _bad(
         doc,
         "PCL017",
@@ -655,6 +828,9 @@ def _pcl018(doc: LabelDocument, ctx: CheckContext) -> CheckResult:
                 "issues display a total row of 100 percent for every column. This "
                 "reads the total the label itself displays. It does not add up the "
                 "rows above it, for the reason recorded against PCL025.",
+                # Not partial: this row is exactly what the deviation is about, so
+                # the evidence is the finding's subject rather than a near miss.
+                evidence=_where(doc, ctx, deviations[0][0]),
             )
         return _ok(
             "PCL018",
@@ -662,6 +838,7 @@ def _pcl018(doc: LabelDocument, ctx: CheckContext) -> CheckResult:
             f"100 percent, across {len(rows)} total row(s)."
             if len(rows) > 1
             else f"All {len(rows[0][1])} displayed column totals are 100 percent.",
+            evidence=_where(doc, ctx, rows[0][0]),
         )
     return _unknown(
         "PCL018",
