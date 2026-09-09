@@ -110,3 +110,12 @@ that touches checks.
 
 Describe the change by what it does. Keep the changelog's Unreleased section
 current in the same commit as the change it describes.
+
+## Commercial solicitation
+
+Issues here are not open to bids. They are design records, written so a decision is
+reconstructable later, rather than scope documents for outside quoting. Unsolicited offers to
+implement one for a fee will be declined.
+
+Contributions through the normal fork-and-PR process are welcome, and `good first issue` is the
+place to start.
