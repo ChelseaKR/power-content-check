@@ -74,7 +74,7 @@ Steps:
 1. **Widen in diversity-first batches**, as before: pick the labels least
    like the ones already read (supplier type, size, geography), not the
    next ones on the list. Fetch through `scripts/fetch_examples.py`, which
-   honours robots.txt, rate limits itself, and refuses bulk runs.
+   honors robots.txt, rate limits itself, and refuses bulk runs.
 2. **Do the artwork enumeration and placement measurement** for each new
    batch (`scripts/inspect_artwork.py`), and render pages only where doubt
    remains. Record what was done and what was not, as `docs/sources.md`
@@ -244,7 +244,7 @@ that publishes behind the existing release gate follows that, not before.
    little over 97. The floor moves only when what it excludes has been
    argued with; the next raise is deliberate work, not housekeeping.
 2. **Property tests for the invariants the ADRs assert.** Landed over
-   generated inputs: normalisation is idempotent and folds only its declared
+   generated inputs: normalization is idempotent and folds only its declared
    classes; space-insensitive matching finds a phrase under any spacing and
    never under an inserted word; cell reconstruction loses and duplicates
    nothing, so no grouping it produces can carry a claim about absence.

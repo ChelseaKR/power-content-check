@@ -5,7 +5,7 @@ Why this exists. The checker reads a text layer. When it reports that a
 prescribed element does not appear, there are two explanations: the element is
 not on the label, or it is on the label as a picture that no text extractor can
 read. The difference matters, because the labels this tool reads belong to
-named organisations, and reporting a limit of PDF extraction as a property of
+named organizations, and reporting a limit of PDF extraction as a property of
 someone's document is a way of being wrong about a person.
 
 This script does not settle that question by itself. It narrows it, by printing

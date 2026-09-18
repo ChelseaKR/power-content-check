@@ -117,7 +117,7 @@ entirely its own.
 
 ### #32, audit: checks that could not fail
 
-Six commits. Two behavioural fixes and an audit that hunts tests unable to go
+Six commits. Two behavioral fixes and an audit that hunts tests unable to go
 red.
 
 The CLI returned argparse's exit code 2 for a usage error while
@@ -219,7 +219,7 @@ the empty string then counted as one of the two distinct numbers section
 number had been read.
 
 Correctness of the intent: good. Reverting `checks.py` makes six of its tests
-fail, five behavioural and one from the repository scan, which names
+fail, five behavioral and one from the repository scan, which names
 `checks.py` lines 44, 47 and 58 exactly.
 
 Correctness of the branch as it stands: it does not parse. See the section

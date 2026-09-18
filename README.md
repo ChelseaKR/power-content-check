@@ -300,7 +300,7 @@ print('valid')
 ```
 
 Every report names the schema it claims to meet in its own `schema` key, so a
-file that has travelled away from this repository still says what it is
+file that has traveled away from this repository still says what it is
 supposed to satisfy.
 
 The schemas are generated from the model by `make schemas`, and a test holds the
@@ -326,7 +326,7 @@ GitHub code scanning and most CI annotation surfaces already read:
 uv run power-content-check check label.pdf --sarif > results.sarif
 ```
 
-It is a serialiser. It changes nothing the tool concludes and the exit code is
+It is a serializer. It changes nothing the tool concludes and the exit code is
 exactly the same as without it, which a test holds.
 
 What it must not do is lose the fail-closed contract in translation, because
@@ -449,7 +449,7 @@ supplier's figures.
 
 `scripts/fetch_examples.py` will fetch a small number of published labels into
 a local, ignored cache if you want to exercise the tool against real documents.
-It honours robots.txt, rate limits itself, and refuses to fetch in bulk. Twenty
+It honors robots.txt, rate limits itself, and refuses to fetch in bulk. Twenty
 four of the ninety one published labels have been read this way, and three of
 the checks are the way they are because of what a wider set showed that a
 narrower one did not. On all thirty four the same two checks, and only those

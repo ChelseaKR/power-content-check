@@ -1,7 +1,7 @@
 """The ADRs' prose invariants, held over generated inputs.
 
 Two guarantees so far live only in hand-built tests and documentation:
-normalisation widens matching without changing which words are there, and
+normalization widens matching without changing which words are there, and
 cell reconstruction loses nothing that was drawn. These properties hold
 them over hundreds of generated cases each, because an invariant that is
 stated in an ADR and enforced nowhere is a wish.
@@ -57,9 +57,9 @@ class TestNormalizeProperties:
         )
     )
     def test_folding_is_confined_to_the_declared_classes(self, text: str) -> None:
-        """Normalisation is allowed to fold exactly the character classes it
+        """Normalization is allowed to fold exactly the character classes it
         declares: spaces, dashes, quotes, case, and nothing else. Squeezed of
-        whitespace and the two quote characters it normalises to, the output
+        whitespace and the two quote characters it normalizes to, the output
         is the input's alphanumeric skeleton and no more. The alphabet is
         restricted to NFKC-stable characters because NFKC runs first and may
         rewrite a declared class member into something else entirely, which
@@ -137,7 +137,7 @@ class TestCellReconstructionProperties:
         self, rows: list[tuple[float, float, float, int, str]]
     ) -> None:
         """Grouping joins whole segments; it never edits one. Plain lowercase
-        letters survive normalisation untouched, so each segment's text must
+        letters survive normalization untouched, so each segment's text must
         appear contiguously in the cell that took it."""
         segs = [_segment(row) for row in rows]
         cells = [_squeezed(c) for c in _cells(segs)]

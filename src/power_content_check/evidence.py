@@ -11,7 +11,7 @@ re-extract the document and search it by hand. ``docs/AUDITING.md`` asks the
 reader to do exactly that.
 
 An ``Evidence`` block is the citation half of a finding: the page a run was
-read from, and the normalised run itself, bounded.
+read from, and the normalized run itself, bounded.
 
 The fence from ADR 0007 holds
 -----------------------------
@@ -34,15 +34,15 @@ evidence says so; it never says somewhere else.
 Four ways a run is located, in order
 ------------------------------------
 
-1. **A normalised line of a page.** The most legible answer for a person: it is
+1. **A normalized line of a page.** The most legible answer for a person: it is
    what the row of the label says, and it names a page.
-2. **A window of a page's whole normalised text.** Needed because normalisation
+2. **A window of a page's whole normalized text.** Needed because normalization
    joins lines, so a phrase can be matched across a line break that no single
    line contains.
-3. **A normalised line of the whole document.** Where there are no pages at all
+3. **A normalized line of the whole document.** Where there are no pages at all
    -- plain-text input -- this is the readable answer, and it is the same rows
    the row-oriented checks read.
-4. **A window of the document's normalised text, with no page.** The join of
+4. **A window of the document's normalized text, with no page.** The join of
    every page can contain a run that no individual page does: the last words of
    one page and the first of the next. That is a real match, and the honest page
    for it is ``None``, not a guess.
@@ -63,7 +63,7 @@ from .normalize import normalize, normalize_lines
 if TYPE_CHECKING:  # pragma: no cover - imported for typing only
     from .extract import LabelDocument
 
-#: Longest run a report will carry, in characters of normalised text.
+#: Longest run a report will carry, in characters of normalized text.
 #:
 #: A label is a page of prose and a table; a report that quoted an unbounded run
 #: would carry most of the document into every result, and thirty results would
@@ -159,7 +159,7 @@ def _squeeze_map(text: str) -> tuple[str, list[int]]:
 
 
 def _find(haystack: str, needle: str, *, ignoring_spaces: bool) -> tuple[int, int] | None:
-    """Span of ``needle`` in ``haystack``, both already normalised."""
+    """Span of ``needle`` in ``haystack``, both already normalized."""
     if not ignoring_spaces:
         index = haystack.find(needle)
         return None if index < 0 else (index, index + len(needle))
@@ -182,7 +182,7 @@ def locate(
 ) -> Evidence | None:
     """Where ``matched`` was read from, or ``None`` if it cannot be found.
 
-    ``matched`` is text the caller's own matcher produced. It is normalised
+    ``matched`` is text the caller's own matcher produced. It is normalized
     here the same way the document was, so a caller may pass either the
     regulation's spelling or the run its regex returned.
     """

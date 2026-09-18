@@ -176,8 +176,8 @@ class TestWorkflowHardening:
         bare = re.compile(r"^\s*-?\s*uses:\s*[^\s@./]+/[^\s@]+@[0-9a-f]{40}\s*$", re.MULTILINE)
         for workflow in self.workflows():
             text = workflow.read_text(encoding="utf-8")
-            assert not bare.search(text), f"{workflow.name} has an unlabelled pin"
-            assert pattern.search(text), f"{workflow.name} has no labelled pin"
+            assert not bare.search(text), f"{workflow.name} has an unlabeled pin"
+            assert pattern.search(text), f"{workflow.name} has no labeled pin"
 
     def test_every_workflow_declares_top_level_permissions(self) -> None:
         for workflow in self.workflows():

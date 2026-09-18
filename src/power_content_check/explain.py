@@ -1,7 +1,7 @@
 """Show the work behind one check on one document.
 
 ``docs/AUDITING.md`` section 2 tells a reader who does not trust this tool how
-to reproduce a finding by hand: extract the text, normalise it, search it. That
+to reproduce a finding by hand: extract the text, normalize it, search it. That
 is the right instruction and it is a lot of work, and until the reader has done
 it they are taking the tool's word for where in the extracted text a prescribed
 phrase is or is not.
@@ -380,7 +380,7 @@ def assess_phrase(text: str, phrase: Phrase) -> PhraseOutcome:
             span=None,
             document_character=None,
             phrase_character=None,
-            note="The phrase normalises to the empty string, so nothing was compared.",
+            note="The phrase normalizes to the empty string, so nothing was compared.",
         )
     matched = _matches(text, phrase)
     offset = _anchor(text, wanted, phrase.fold)
@@ -432,14 +432,14 @@ def assess_expression(text: str, expression: Expression) -> ExpressionOutcome:
 # ---------------------------------------------------------------------------
 
 SURFACE_DESCRIPTIONS: dict[str, str] = {
-    "normalized": "the whole normalised text layer, read as one string",
-    "lines": "the normalised text layer, one line at a time, blank lines dropped",
+    "normalized": "the whole normalized text layer, read as one string",
+    "lines": "the normalized text layer, one line at a time, blank lines dropped",
     "cells": "the page read column by column rather than across it (ADR 0008)",
     "domains": (
         "the web addresses found in the raw text, with email addresses removed "
         "before the domain matcher reads it"
     ),
-    "raw": "the extracted text before normalisation",
+    "raw": "the extracted text before normalization",
 }
 
 

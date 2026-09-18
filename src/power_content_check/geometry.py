@@ -146,11 +146,11 @@ def _nests(a: Segment, b: Segment) -> bool:
     """True when one segment's horizontal extent sits inside the other's.
 
     Containment rather than overlap, and the difference matters. A heading that
-    wraps is centred or aligned inside its own column, so its second line sits
+    wraps is centered or aligned inside its own column, so its second line sits
     inside the first line's extent, or the first inside the second. A wide line
     that merely reaches into the next column, a supplier's name spanning most of
     the page for instance, overlaps a heading without containing it, and joining
-    on overlap glues that heading to its neighbour. Containment needs no
+    on overlap glues that heading to its neighbor. Containment needs no
     fraction, no tolerance and no distance.
     """
     return (a.x0 <= b.x0 and b.x1 <= a.x1) or (b.x0 <= a.x0 and a.x1 <= b.x1)
@@ -201,7 +201,7 @@ def _cells(segments: list[Segment]) -> list[str]:
 
 
 def page_cells(page: Any) -> tuple[str, ...] | None:
-    """The normalised text of each reconstructed cell, or ``None``.
+    """The normalized text of each reconstructed cell, or ``None``.
 
     ``None`` means the page's geometry could not be recovered: an older or
     newer pypdf that no longer exposes the layout machinery, a content stream

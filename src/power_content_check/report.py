@@ -19,7 +19,7 @@ _MARK = {
 
 _WIDTH = 88
 
-#: How many skipped file names the text report prints before summarising the
+#: How many skipped file names the text report prints before summarizing the
 #: rest. A display choice and nothing more: the JSON always carries every one.
 _SKIPPED_SHOWN = 10
 

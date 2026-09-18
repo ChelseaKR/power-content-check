@@ -1,7 +1,7 @@
 """The SARIF log, and the fail-closed contract surviving the translation.
 
 SARIF's natural shape is a list of problems found. This tool's central claim is
-about the checks it could *not* decide, and a serialiser that emitted only
+about the checks it could *not* decide, and a serializer that emitted only
 deviations would quietly discard it: a log with an empty ``results`` array would
 say the same thing for a clean label, an unreadable one, and a run that checked
 nothing at all. Every assertion here exists to stop one of those three collapsing
@@ -17,7 +17,7 @@ validate. Measured 2026-09-07 against the OASIS errata01 schema
 fixture. What is *not* here is a vendored copy of that 112 KB document, because
 redistributing an OASIS specification artifact carries its notice requirements
 and that is the owner's call rather than an agent's. The gate below is therefore
-structural: :data:`_REQUIRED` pins the shape of every object this serialiser
+structural: :data:`_REQUIRED` pins the shape of every object this serializer
 emits, so a key dropped or retyped fails here.
 
 That is a real gap and it is stated rather than papered over. It is also worth
@@ -79,7 +79,7 @@ def _invocation(log: dict[str, Any]) -> dict[str, Any]:
 # ---------------------------------------------------------------------------
 
 #: Object path to the keys SARIF 2.1.0 requires of it, for every object this
-#: serialiser emits. Not the whole specification: the part of it this log uses.
+#: serializer emits. Not the whole specification: the part of it this log uses.
 _REQUIRED: dict[str, set[str]] = {
     "log": {"version", "runs"},
     "run": {"tool", "invocations", "results"},
@@ -433,7 +433,7 @@ def test_results_are_ordered_by_document_then_check(
 def test_sarif_changes_no_exit_code(
     deficient_label: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
-    """A serialiser that moved an exit code would be a rule change in disguise."""
+    """A serializer that moved an exit code would be a rule change in disguise."""
     plain = main(["check", str(deficient_label)])
     capsys.readouterr()
     as_sarif = main(["check", str(deficient_label), "--sarif"])

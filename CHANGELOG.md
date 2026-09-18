@@ -64,7 +64,7 @@ recorded as one.
   findings.
 
   Each `CheckResult` gains an optional `evidence` block carrying the page, the
-  bounded normalised run the check matched, whether that run was truncated,
+  bounded normalized run the check matched, whether that run was truncated,
   whether it is a near miss rather than the thing required, and a reconstructed
   column-cell index where ADR 0008's column reading supplied it. `--verbose`
   prints one line per result (`Read from page 2: '...'`); the JSON always
@@ -77,7 +77,7 @@ recorded as one.
   counts, exit code and the run fingerprint. The fingerprint never carried
   `detail` and does not carry evidence either.
 
-  Three details a reader of a report needs. The run is **normalised text**, not
+  Three details a reader of a report needs. The run is **normalized text**, not
   the bytes on the page, because that is the form the check compared against.
   `page` is **null** rather than 1 whenever the run cannot be attributed to one
   page -- plain-text input, or a phrase that exists only in the join of two
@@ -98,7 +98,7 @@ recorded as one.
 - **`check --sarif` emits a SARIF 2.1.0 log** (`src/power_content_check/sarif.py`,
   `tests/test_sarif.py`). `--json` is this tool's own shape, so anyone gating a
   document in CI wrote an adapter first; SARIF is what code scanning and CI
-  annotation surfaces already read. It is a serialiser: it changes nothing the
+  annotation surfaces already read. It is a serializer: it changes nothing the
   tool concludes and leaves the exit code exactly as documented, and a test holds
   both.
 
@@ -251,7 +251,7 @@ recorded as one.
   holds. `tests/test_report.py` pins the exact key sets, so both additions are asserted.
 
 - **`power-content-check explain LABEL.pdf PCL012`.** `docs/AUDITING.md` section 2 tells
-  a reader how to reproduce a finding by hand: extract, normalise, search. The new verb
+  a reader how to reproduce a finding by hand: extract, normalize, search. The new verb
   does those steps and shows its work, which is what separates a genuine deviation from a
   phrase the extractor broke apart in a way `normalize.py` does not yet fold. It prints
   the citation and quote, the document's readability and extraction basis, the text the
@@ -306,7 +306,7 @@ recorded as one.
   JSON document that is not one of this tool's reports, a `documents` value that is not a
   list, and two documents sharing a match key. Two empty reports compare equal, and
   "nothing moved" about two files that were never read is the vacuous pass this project
-  is organised against.
+  is organized against.
 
 ### Added
 
@@ -355,7 +355,7 @@ recorded as one.
   sentence says so. No check reads either count; a test reads the catalog's
   source to hold that. See `docs/adr/0012`.
 - Property tests over generated inputs, holding the ADRs' prose invariants
-  mechanically: normalisation folds only its declared character classes and
+  mechanically: normalization folds only its declared character classes and
   is idempotent; space-insensitive matching finds a phrase under any spacing
   extraction invents and never under an inserted word; cell reconstruction
   loses and duplicates nothing, and every segment survives whole inside the
@@ -415,9 +415,9 @@ recorded as one.
   image is found the sentence says so, and where the streams could not be read
   it says the question is open rather than treating unknown as zero.
 - PCL010 tested for the prescribed unit `CO2e` with a raw substring against
-  the normalised text, so a subscript in the intensity heading made it false.
+  the normalized text, so a subscript in the intensity heading made it false.
   The issued labels set the 2 of CO2 as a subscript, a subscript is a
-  separate text run, and normalisation turns the break into a space - the
+  separate text run, and normalization turns the break into a space - the
   exact case ADR 0006 already decided for the footnote checks. PCL010 was
   the one check comparing a prescribed string without the guarantee this
   project built for prescribed strings, so a label whose heading split would
@@ -619,7 +619,7 @@ earlier tag exists: the work prepared as the first cut is recorded together.
   performance or compliance status, does not rank suppliers, and is not
   affiliated with the California Energy Commission or any utility.
 - `scripts/fetch_examples.py`, which will cache a small number of published
-  labels locally, honouring robots.txt and refusing to fetch in bulk.
+  labels locally, honoring robots.txt and refusing to fetch in bulk.
 - Every deviation now states the basis on which the tool looked. Extraction
   counts the images a PDF declares, following Form XObjects, and composes one
   sentence from the count: this PDF embeds N images and text inside a picture

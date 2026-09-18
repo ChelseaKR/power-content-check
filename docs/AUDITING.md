@@ -98,7 +98,7 @@ requirement and what the tool could see of the document. To reproduce one:
 
 ### What the evidence block does and does not say
 
-The run is **normalised text**, not the bytes on the page: it is the form the
+The run is **normalized text**, not the bytes on the page: it is the form the
 check compared against, so a reader reproduces the *match* rather than the
 typography. Dashes have become spaces, `&` has become ` and `, and the case is
 folded. That is why a run can look slightly unlike the label and still be the
@@ -137,7 +137,7 @@ power-content-check explain LABEL.pdf PCL010
 ```
 
 It prints the check's citation and quote, the document's readability and
-extraction basis, the normalised text the check read, every literal and
+extraction basis, the normalized text the check read, every literal and
 pattern the check looks for with whether each matched, and for a literal that
 did not match, the nearest span in the document with the character where the
 two stopped agreeing. It also prints the fences that decided: which comparison
@@ -366,7 +366,7 @@ carry no real supplier's figures.
 To read published labels yourself:
 
 ```sh
-python scripts/fetch_examples.py     # honours robots.txt, rate limits, refuses bulk runs
+python scripts/fetch_examples.py     # honors robots.txt, rate limits, refuses bulk runs
 python scripts/inspect_artwork.py    # enumerate and place the artwork on a page
 ```
 

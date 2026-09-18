@@ -10,7 +10,7 @@ Deliberate limits:
 * A hard cap on how many documents one invocation will fetch. Bulk collection
   is not a supported use of this script and raising the cap is not a supported
   workaround.
-* robots.txt is fetched and honoured for every host, and a disallowed URL is
+* robots.txt is fetched and honored for every host, and a disallowed URL is
   skipped with a message rather than fetched anyway.
 * A pause between requests.
 * Files land in a directory that .gitignore excludes.

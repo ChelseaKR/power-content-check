@@ -1,4 +1,4 @@
-"""Behaviour of the individual checks."""
+"""Behavior of the individual checks."""
 
 from __future__ import annotations
 

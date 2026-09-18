@@ -7,7 +7,7 @@ Report privately through
 
 Please do not open a public issue for a vulnerability.
 
-Expect an acknowledgement within seven days and an assessment within thirty.
+Expect an acknowledgment within seven days and an assessment within thirty.
 There is no bounty.
 
 ## Supported versions

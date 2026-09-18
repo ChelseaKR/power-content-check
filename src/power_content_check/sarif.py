@@ -5,7 +5,7 @@ gating a document in CI writes an adapter first. SARIF is the shape those
 surfaces already read: GitHub code scanning, CI annotations, and every other
 static-analysis consumer.
 
-This is a serialiser and nothing more. It reads a finished
+This is a serializer and nothing more. It reads a finished
 :class:`~power_content_check.model.RunReport`, changes no conclusion, and leaves
 the exit code exactly as :class:`~power_content_check.model.ExitCode` documents
 it. What it must not do is lose the tool's fail-closed contract in translation,
@@ -259,7 +259,7 @@ def _exit_code_meaning(code: int) -> str:
         ExitCode.NONCONFORMANCE: "at least one check found a deviation",
         ExitCode.NOT_EVALUATED: "at least one check could not be evaluated",
         ExitCode.NOTHING_CHECKED: "nothing was checked",
-    }.get(code, "unrecognised exit code")
+    }.get(code, "unrecognized exit code")
 
 
 def report_to_sarif_dict(report: RunReport) -> dict[str, Any]:

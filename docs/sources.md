@@ -53,7 +53,7 @@ check cites, and read the sentence yourself.
 
 ### Public Utilities Code section 398.4
 
-- **What**: the authorising statute.
+- **What**: the authorizing statute.
 - **Publisher**: California Legislative Counsel.
 - **URL**: <https://leginfo.legislature.ca.gov/faces/codes_displaySection.xhtml?lawCode=PUC&sectionNum=398.4>
 - **Retrieved**: 17 August 2026. Re-read in full on 22 August 2026 for the
@@ -213,8 +213,8 @@ telephone number" is a statement about the tool and not about the document.
 It was excluded, in three steps, on the eight labels read first:
 
 1. **The images were enumerated.** The pages declare four, four, four, five,
-   seven, eight, ten and ten images. Every one is a one-colour shape, and the
-   counts are exactly the number of coloured wedges across each label's pie
+   seven, eight, ten and ten images. Every one is a one-color shape, and the
+   counts are exactly the number of colored wedges across each label's pie
    charts: two for a two-tone pie, one for a single-tone pie.
 
 2. **Their placement was measured**, with `scripts/inspect_artwork.py`. The
@@ -240,7 +240,7 @@ Sources" band. Across all twenty four labels the largest image drawn anywhere is
 picture explanation is narrowed on the sixteen rather than closed the way
 rendering closed it on the eight.
 
-The tool does not generalise from either group. It counts the images on
+The tool does not generalize from either group. It counts the images on
 whatever document it is given and prints what that count permits it to say. See
 `docs/adr/0003`.
 
@@ -259,7 +259,7 @@ showed it, and both causes were fixed. See `docs/adr/0006`.
 - **The separate statewide disclosure**, reported absent on two labels that
   carry the "CA Utility Average" heading. A heading too long for its column
   wraps onto a second line and extraction reads across the wrap, so the words
-  of the neighbouring heading arrive inside this one. PCL016 now reports not
+  of the neighboring heading arrive inside this one. PCL016 now reports not
   evaluated when every word of an accepted rendering is present but the
   rendering is not, because a wrapped heading and a missing heading look the
   same to a substring test.

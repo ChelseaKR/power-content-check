@@ -42,7 +42,7 @@ class TestArtworkVersusText:
 
     Extraction reads a text layer. An element the tool cannot find is either
     absent from the document or drawn as a picture, and the difference matters
-    a great deal when the document belongs to a named organisation. The tool
+    a great deal when the document belongs to a named organization. The tool
     measures the pictures so that it can say which explanations are available.
     """
 
@@ -98,7 +98,7 @@ class TestArtworkVersusText:
             "inside a picture or as a vector outline is not read."
         ) in document.extraction_basis
 
-    def test_a_single_paint_is_not_pluralised(self, tmp_path: Path) -> None:
+    def test_a_single_paint_is_not_pluralized(self, tmp_path: Path) -> None:
         from conftest import synthetic_label_pdf
 
         path = synthetic_label_pdf(tmp_path / "one_shape.pdf", paints=1)
@@ -426,7 +426,7 @@ class TestMultipage:
 
     Nothing in the regulation says a label is one page, and PCL019's reason
     records that the tool declines to equate "one place" with one page.
-    Extraction already joins every page before normalisation, so text split
+    Extraction already joins every page before normalization, so text split
     across a page boundary reaches the checks; what these tests hold is that
     it does, and that geometry stays a fact about one page at a time.
     """
