@@ -1,4 +1,4 @@
-"""Command line behaviour, including the exit codes callers depend on."""
+"""Command line behavior, including the exit codes callers depend on."""
 
 from __future__ import annotations
 

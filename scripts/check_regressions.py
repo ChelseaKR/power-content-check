@@ -152,7 +152,7 @@ def collect() -> dict[str, str]:
     """Run the checker over the whole cache and map digest to fingerprint.
 
     Keyed by content digest rather than file name, because names are how a
-    cache reorganises itself and a fingerprint is not about a path.
+    cache reorganizes itself and a fingerprint is not about a path.
     """
     report = _run_over_cache()
     out: dict[str, str] = {}

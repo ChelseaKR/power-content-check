@@ -209,9 +209,9 @@ def illustrated_pdf(tmp_path: Path) -> Path:
 #: page line by line, which is what a text extractor does, yields "2024 Example
 #: CA Utility" and then "Power Mix Average", so neither heading survives as a
 #: phrase. Reading it column by column yields both. This is the shape of the
-#: artefact ADR 0006 found on published labels and ADR 0008 repairs.
+#: artifact ADR 0006 found on published labels and ADR 0008 repairs.
 #:
-#: The second line of each heading is centred under the first, which is how the
+#: The second line of each heading is centered under the first, which is how the
 #: issued labels set them, so its extent sits inside the first line's. The first
 #: heading arrives in two pieces that touch, which is how the issued labels
 #: arrive too: a page draws a phrase in as many runs as it likes, and the pieces

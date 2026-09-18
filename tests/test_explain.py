@@ -160,7 +160,7 @@ class TestThePlansDescribeTheChecks:
     ) -> None:
         """The fixture has to sit where the binding above can fail.
 
-        If nothing conformed, every case would skip and the parametrised test
+        If nothing conformed, every case would skip and the parametrized test
         would report green having compared nothing.
         """
         supplier = "Example Municipal Utility District"
@@ -246,7 +246,7 @@ class TestNoProbeListIsSilentlyEmpty:
         explanation = explain(conforming_label, "PCL001", _ctx(supplier))
         assert [p.matched for p in explanation.phrase_outcomes] == [True]
 
-    def test_a_name_that_normalises_away_compares_nothing(self, conforming_label: Path) -> None:
+    def test_a_name_that_normalizes_away_compares_nothing(self, conforming_label: Path) -> None:
         """A phrase of only spaces is not a phrase, and is not a match either."""
         explanation = explain(conforming_label, "PCL001", _ctx("   "))
         outcome = explanation.phrase_outcomes[0]

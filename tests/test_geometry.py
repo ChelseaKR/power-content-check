@@ -66,7 +66,7 @@ class TestReadingDownAColumn:
     def test_a_wrapped_heading_is_lost_reading_across_the_page(
         self, wrapped_heading_pdf: Path
     ) -> None:
-        """The artefact this exists to repair, shown before it is repaired.
+        """The artifact this exists to repair, shown before it is repaired.
 
         The text layer holds every word of the heading and holds them in the
         wrong order, because extraction reads across the wrap.
@@ -79,7 +79,7 @@ class TestReadingDownAColumn:
     def test_the_heading_survives_reading_down_the_column(self, wrapped_heading_pdf: Path) -> None:
         assert "ca utility average" in (_read(wrapped_heading_pdf).cells or ())
 
-    def test_the_neighbouring_heading_survives_too(self, wrapped_heading_pdf: Path) -> None:
+    def test_the_neighboring_heading_survives_too(self, wrapped_heading_pdf: Path) -> None:
         """Both columns reconstruct, not just the one the check asks about."""
         assert "2024 example power mix" in (_read(wrapped_heading_pdf).cells or ())
 
@@ -155,7 +155,7 @@ class TestTheFence:
 
 
 class TestClustering:
-    def test_containment_joins_a_centred_second_line(self) -> None:
+    def test_containment_joins_a_centered_second_line(self) -> None:
         wide = Segment(ty=100.0, x0=400.0, x1=445.0, height=9.0, text="CA Utility")
         narrow = Segment(ty=88.0, x0=402.0, x1=443.0, height=9.0, text="Average")
         assert _nests(wide, narrow)

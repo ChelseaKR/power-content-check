@@ -95,7 +95,7 @@ def _evidence_schema() -> dict[str, Any]:
             "run": {
                 "type": "string",
                 "description": (
-                    "The normalised text run the check matched, bounded. Normalised, "
+                    "The normalized text run the check matched, bounded. Normalized, "
                     "not verbatim: it is the form the check compared against, so a "
                     "reader reproduces the match rather than the typography."
                 ),
@@ -457,5 +457,5 @@ def registered_check_ids() -> tuple[str, ...]:
 
 
 def render(document: dict[str, Any]) -> str:
-    """Serialise a schema exactly as the committed files hold it."""
+    """Serialize a schema exactly as the committed files hold it."""
     return json.dumps(document, indent=2, ensure_ascii=False) + "\n"

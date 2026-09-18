@@ -160,7 +160,7 @@ class ReportUnreadable(Exception):
     """A report could not be read, so no comparison is reported.
 
     Never a default empty report: two empty reports compare equal, and "nothing moved"
-    about two files that were never read is the vacuous pass this project is organised
+    about two files that were never read is the vacuous pass this project is organized
     against.
     """
 

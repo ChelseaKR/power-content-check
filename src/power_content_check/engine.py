@@ -61,7 +61,7 @@ def run_checks(
     """Run every registered check against one readable document.
 
     ``registry`` defaults to the full catalog. It is a parameter so that the
-    fail-closed behaviour can be tested against a check that is guaranteed to
+    fail-closed behavior can be tested against a check that is guaranteed to
     raise, without reaching into module state.
     """
     results: list[CheckResult] = []

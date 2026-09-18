@@ -743,7 +743,7 @@
         },
         "run": {
           "type": "string",
-          "description": "The normalised text run the check matched, bounded. Normalised, not verbatim: it is the form the check compared against, so a reader reproduces the match rather than the typography."
+          "description": "The normalized text run the check matched, bounded. Normalized, not verbatim: it is the form the check compared against, so a reader reproduces the match rather than the typography."
         },
         "truncated": {
           "type": "boolean",

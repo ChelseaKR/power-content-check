@@ -1,7 +1,7 @@
 """The auditor's entry point must agree with the tool it describes.
 
 `docs/AUDITING.md` tells someone who does not trust this tool how to check
-it. A statement in it that the tool does not honour is worse than no
+it. A statement in it that the tool does not honor is worse than no
 document, because an auditor following it looks for values the reports never
 contain and concludes the tool is broken, or worse, concludes it is fine.
 

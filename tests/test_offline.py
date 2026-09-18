@@ -37,7 +37,7 @@ PACKAGE = ROOT / "src" / "power_content_check"
 #: The network modules are the claim itself. The process-spawning ones are
 #: here because they are the way around it: a package that shells out can
 #: reach the network without importing a socket, and the claim a reader takes
-#: from the README is about the tool's behaviour, not about its import list.
+#: from the README is about the tool's behavior, not about its import list.
 FORBIDDEN_ROOTS = frozenset(
     {
         "aiohttp",

@@ -69,8 +69,8 @@ push, so it is escalated rather than attempted. Status: **blocked, escalated.**
 exit-code table, printed in the CLI's own `--help` epilog, and given a meaning
 in `report._exit_meaning`. The tool never returns it. Every usage error exits
 2, which is argparse's default, and the two tests that cover usage errors
-assert 2, so they pin the behaviour against its own published contract instead
-of holding it to it. Fix: make the parser honour the code the tool documents.
+assert 2, so they pin the behavior against its own published contract instead
+of holding it to it. Fix: make the parser honor the code the tool documents.
 
 ### Phase 2. An assertion whose ceiling is unreachable
 
@@ -134,7 +134,7 @@ nothing"; there are seventeen. Correct it.
 ### Phase 9. A refusal the README publishes and nothing enforced
 
 `scripts/fetch_examples.py` is the one thing here that touches the network,
-and the README claims it "honours robots.txt, rate limits itself, and refuses
+and the README claims it "honors robots.txt, rate limits itself, and refuses
 to fetch in bulk". CONTRIBUTING lists bulk fetching among the things this
 project will not accept. No test referenced the script at all, so the cap
 could have been raised, the robots.txt call deleted, the fail-closed treatment
@@ -180,7 +180,7 @@ how a step is written buys nothing if the step can simply go.
   this repository.
 - Baseline `make verify`: exit 0, 369 passed, coverage 96.64 percent against a
   floor of 96.
-- Verified issue #15 empirically: three unparenthesised annotations that carry
+- Verified issue #15 empirically: three unparenthesized annotations that carry
   the required words all report `does_not_conform`. The issue's reproduction is
   accurate.
 - Verified issue #21 empirically: `Total 99.999999999999999999%` reports

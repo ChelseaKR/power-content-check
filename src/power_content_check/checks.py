@@ -73,7 +73,7 @@ _EMAIL = re.compile(r"[a-z0-9][a-z0-9._%+\-]*@[a-z0-9](?:[a-z0-9\-]*[a-z0-9])?(?
 #: subdivision itself uses. The subdivision requires the display to be
 #: annotated to identify a group; it prescribes no punctuation, unlike
 #: subdivision (l), whose footnote text is set out verbatim. So nothing here
-#: anchors on a bracket: the labels the Energy Commission issues parenthesise
+#: anchors on a bracket: the labels the Energy Commission issues parenthesize
 #: the annotation, and a supplier writing the same words after a dash or a
 #: colon has identified the same group. The gap before "primarily" admits
 #: brackets, punctuation and figures but no letters, so the match cannot step
@@ -86,7 +86,7 @@ _YEAR_TITLE = re.compile(r"\b((?:19|20)[0-9]{2})\s+power content label\b")
 
 
 def _row_label(line: str) -> str:
-    """Strip a leading bullet or other decoration from a normalised line."""
+    """Strip a leading bullet or other decoration from a normalized line."""
     return _LEADING_JUNK.sub("", line)
 
 
@@ -104,7 +104,7 @@ def _has_row(doc: LabelDocument, term: str) -> bool:
     return _row_matching(doc, term) is not None
 
 
-def _labelled_figure(doc: LabelDocument, term: str) -> str | None:
+def _labeled_figure(doc: LabelDocument, term: str) -> str | None:
     """The run where ``term`` is immediately followed by a percentage figure.
 
     The intervening characters may not contain letters, which keeps prose that
@@ -116,8 +116,8 @@ def _labelled_figure(doc: LabelDocument, term: str) -> str | None:
     return None if match is None else match.group(0)
 
 
-def _has_labelled_figure(doc: LabelDocument, term: str) -> bool:
-    return _labelled_figure(doc, term) is not None
+def _has_labeled_figure(doc: LabelDocument, term: str) -> bool:
+    return _labeled_figure(doc, term) is not None
 
 
 def _fuel_row_present(doc: LabelDocument, term: str) -> tuple[bool, str, str | None]:
@@ -131,7 +131,7 @@ def _fuel_row_present(doc: LabelDocument, term: str) -> tuple[bool, str, str | N
     row = _row_matching(doc, term)
     if row is not None:
         return True, "row", row
-    figure = _labelled_figure(doc, term)
+    figure = _labeled_figure(doc, term)
     if figure is not None:
         return True, "figure", figure
     return False, "absent", None
@@ -161,8 +161,8 @@ def _phone_runs(doc: LabelDocument) -> list[str]:
 
 
 def _phones(doc: LabelDocument) -> list[str]:
-    normalised = {re.sub(r"[^0-9]", "", p)[-10:] for p in _phone_runs(doc)}
-    return sorted(normalised)
+    normalized = {re.sub(r"[^0-9]", "", p)[-10:] for p in _phone_runs(doc)}
+    return sorted(normalized)
 
 
 # ---------------------------------------------------------------------------
@@ -170,7 +170,7 @@ def _phones(doc: LabelDocument) -> list[str]:
 # ---------------------------------------------------------------------------
 
 #: Subparagraphs (A) through (J), transcribed from the regulation. The
-#: normaliser turns the issued label's "Biomass & Biogas" into
+#: normalizer turns the issued label's "Biomass & Biogas" into
 #: "biomass and biogas", so one spelling covers both renderings.
 REQUIRED_FUEL_TYPES: tuple[tuple[str, str], ...] = (
     ("A", "biomass and biogas"),
@@ -718,7 +718,7 @@ def _pcl016(doc: LabelDocument, ctx: CheckContext) -> CheckResult:
     # A column heading is not prose. On the labels the Energy Commission
     # issues, a heading too long for its column wraps onto a second line, and
     # extraction reads across the wrap, so the words of one heading arrive with
-    # the words of its neighbour inside them. A document that carries the
+    # the words of its neighbor inside them. A document that carries the
     # heading and a document that lacks it then look the same to a substring
     # test, and the tool is not entitled to pick the accusing one.
     scattered = [r for r in STATEWIDE_RENDERINGS if _all_words_present(doc, r)]

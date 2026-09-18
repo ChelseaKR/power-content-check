@@ -1,11 +1,11 @@
-"""Text normalisation.
+"""Text normalization.
 
 Published labels are PDFs. Extracting text from a PDF introduces line breaks
 mid sentence, hyphenated URLs, typographic quotes, non breaking spaces and
-column padding. Checks run against a normalised form so that those artefacts of
+column padding. Checks run against a normalized form so that those artifacts of
 extraction never become findings against a document.
 
-Normalisation is deliberately lossy in one direction only: it widens what
+Normalization is deliberately lossy in one direction only: it widens what
 counts as a match. It never narrows it.
 """
 
@@ -48,7 +48,7 @@ def normalize(text: str) -> str:
 
 
 def normalize_lines(text: str) -> list[str]:
-    """Normalise each line separately, dropping blank lines.
+    """Normalize each line separately, dropping blank lines.
 
     Used by the few checks that care about a row of a table rather than the
     document as a whole.
@@ -62,7 +62,7 @@ def normalize_lines(text: str) -> list[str]:
 
 
 def contains(haystack_normalized: str, needle: str) -> bool:
-    """Substring test where the needle is normalised the same way."""
+    """Substring test where the needle is normalized the same way."""
     return normalize(needle) in haystack_normalized
 
 
@@ -75,7 +75,7 @@ def contains_ignoring_spaces(haystack_normalized: str, needle: str) -> bool:
 
     A PDF can draw one word as more than one text run. A subscript does it:
     the issued labels set the 2 of CO2 as a subscript, and the extractor
-    reports "CO", a break, then "2". Normalisation turns that break into a
+    reports "CO", a break, then "2". Normalization turns that break into a
     space, so the prescribed footnote text of section 1393.1(l)(2) stops
     matching a document that carries it verbatim.
 

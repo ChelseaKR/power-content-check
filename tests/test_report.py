@@ -186,7 +186,7 @@ class TestFilesThatWereNotRead:
         assert report.skipped == []
         assert report.summary["documents_unreadable"] == 1
 
-    def test_a_long_list_is_summarised_and_never_truncated_in_the_json(
+    def test_a_long_list_is_summarized_and_never_truncated_in_the_json(
         self, tmp_path: Path, conforming_label: Path
     ) -> None:
         """A folder of a hundred other files must not bury the findings."""

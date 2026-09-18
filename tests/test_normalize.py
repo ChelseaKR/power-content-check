@@ -1,4 +1,4 @@
-"""Normalisation must widen matching, never narrow it."""
+"""Normalization must widen matching, never narrow it."""
 
 from __future__ import annotations
 
@@ -48,7 +48,7 @@ class TestNormalizeLines:
 
 
 class TestContains:
-    def test_needle_is_normalised_too(self) -> None:
+    def test_needle_is_normalized_too(self) -> None:
         assert contains(normalize("Coal & Petroleum 0%"), "Coal and petroleum")
 
     def test_absent_needle(self) -> None:

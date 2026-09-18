@@ -179,7 +179,7 @@ def test_the_workflow_is_dispatch_only(trigger: str, reachable: bool) -> None:
     This is *why* the rules above exist rather than a rule about the trigger:
     a file CI never runs is a file whose only guard is a test that reads it. If
     a `push` trigger is ever added, these assertions stop being the sole guard
-    and this parametrisation is the thing that says so.
+    and this parametrization is the thing that says so.
     """
     workflow = _workflow()
     # YAML 1.1 reads a bare `on:` as the boolean True. Both spellings are

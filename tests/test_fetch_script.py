@@ -1,7 +1,7 @@
 """The refusals the fetch script promises, held rather than remembered.
 
 `scripts/fetch_examples.py` is the one thing in this repository that touches
-the network, and the README makes three claims about it: that it "honours
+the network, and the README makes three claims about it: that it "honors
 robots.txt, rate limits itself, and refuses to fetch in bulk". CONTRIBUTING
 lists bulk fetching among the things this project will not accept. Nothing
 enforced any of it, so the cap could have been raised, the robots.txt call
@@ -142,7 +142,7 @@ class TestItRefusesToFetchInBulk:
         assert script.PAUSE_SECONDS > 0
 
 
-class TestItHonoursRobots:
+class TestItHonorsRobots:
     def test_a_disallowed_url_is_not_fetched(
         self,
         script: ModuleType,
@@ -160,7 +160,7 @@ class TestItHonoursRobots:
         monkeypatch: pytest.MonkeyPatch,
         capsys: pytest.CaptureFixture[str],
     ) -> None:
-        """The positive control. A rule that refuses everything honours nothing."""
+        """The positive control. A rule that refuses everything honors nothing."""
         asked = _serving(script, monkeypatch, robots=b"User-agent: *\nAllow: /\n")
         assert script.main([EXAMPLE]) == 0
         capsys.readouterr()

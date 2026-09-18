@@ -45,7 +45,7 @@ CEC_ISSUED_LABELS = Source(
     effective=None,
 )
 
-#: The authorising statute. Recorded so the chain of authority is visible; no
+#: The authorizing statute. Recorded so the chain of authority is visible; no
 #: check cites it on its own, because the regulation is the more specific text.
 PUC_398_4 = Source(
     key="ca-puc-398.4",
